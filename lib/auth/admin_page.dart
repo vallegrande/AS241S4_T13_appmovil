@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'auth/login_page.dart';
-import 'users/panel_user.dart';
+import 'login_page.dart';
+import '../users/panel_user.dart';
 
 class AdminPage extends StatelessWidget {
   const AdminPage({super.key});

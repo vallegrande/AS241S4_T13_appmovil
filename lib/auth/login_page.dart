@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../admin_page.dart';
+import 'admin_page.dart';
 import '../users/panel_user.dart';
 
 class LoginPage extends StatelessWidget {

@@ -1,5 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/users/form_user.dart';
+import '../widgets/header.dart';
+import '../widgets/sidebar.dart';
+
+// Modelo simple de usuario
+class User {
+  String name;
+  String email;
+  String phone;
+  String carnet;
+  String role;
+  String imagePath;
+  bool isDeleted;
+  String originalRole;
+
+  User({
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.carnet,
+    required this.role,
+    required this.imagePath,
+    this.isDeleted = false,
+  }) : originalRole = role; // Guardamos el rol original
+}
 
 class PanelUserScreen extends StatefulWidget {
   const PanelUserScreen({super.key});
@@ -11,193 +35,195 @@ class PanelUserScreen extends StatefulWidget {
 class _PanelUserScreenState extends State<PanelUserScreen> {
   bool _isSidebarOpen = false;
 
-  // Botón cuadrado con bordes redondeados (HEADER)
-  Widget _buildIconButton(String assetPath, {VoidCallback? onTap}) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12), // esquinas redondeadas
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEBE0E0), // Fondo EBE0E0
-          borderRadius: BorderRadius.circular(12),
+  List<User> users = [
+    User(
+      name: "Carlos Caycho",
+      email: "carlos.caycho@vallegrande.edu.pe",
+      phone: "903018604",
+      carnet: "12345678",
+      role: "Admin",
+      imagePath: "assets/card_user/perfil1.png",
+    ),
+    User(
+      name: "Alejandro Casas",
+      email: "ale.cas@vallegrande.edu.pe",
+      phone: "903018604",
+      carnet: "87654321",
+      role: "Mozo",
+      imagePath: "assets/card_user/perfil2.png",
+    ),
+    User(
+      name: "Sebastian Conca",
+      email: "seb.conca@vallegrande.edu.pe",
+      phone: "903018604",
+      carnet: "45678912",
+      role: "Cajero",
+      imagePath: "assets/card_user/perfil3.png",
+    ),
+  ];
+
+  // Abrir UserForm para agregar o editar
+  Future<void> _openUserForm({User? user, int? index}) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserForm(
+          nombres: user?.name,
+          gmail: user?.email,
+          telefono: user?.phone,
+          numeroDocumento: user?.carnet,
+          rol: user?.role,
+          imagePath: user?.imagePath,
         ),
-        child: Image.asset(assetPath, height: 22),
       ),
     );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        User newUser = User(
+          name: result["nombres"] ?? "",
+          email: result["gmail"] ?? "",
+          phone: result["telefono"] ?? "",
+          carnet: result["numeroDocumento"] ?? "",
+          role: result["rol"] ?? "Admin",
+          imagePath: result["imagePath"] ?? "assets/formUser/defaultUser.png",
+        );
+
+        if (index != null) {
+          users[index] = newUser;
+        } else {
+          users.add(newUser);
+        }
+      });
+    }
   }
 
-  // Iconos del sidebar (cuadrados con esquinas redondeadas)
-  Widget _sidebarIcon(
-    String assetPath, {
-    VoidCallback? onTap,
-    double size = 28,
-    Color? backgroundColor,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? const Color(0xFFEBE0E0),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Image.asset(assetPath, height: size),
-      ),
-    );
-  }
+  Widget _userCard(User user, int index) {
+    Color roleColor = Colors.grey;
+    if (user.role == "Admin") roleColor = Colors.green;
+    if (user.role == "Mozo") roleColor = Colors.purple;
+    if (user.role == "Cajero") roleColor = Colors.red;
 
-  // Ícono especial del Perfil (más grande y sin fondo)
-  Widget _profileIcon(
-    String assetPath, {
-    VoidCallback? onTap,
-    double size = 40,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.all(4),
-        decoration: const BoxDecoration(
-          color: Colors.transparent, // sin fondo
-        ),
-        child: Image.asset(assetPath, height: size),
-      ),
-    );
-  }
-
-  // Tarjeta de usuario con diseño de 3 columnas
-  Widget _userCard({
-    required String name,
-    required String email,
-    required String phone,
-    required String carnet,
-    required String role,
-    required String imagePath,
-    required Color roleColor,
-  }) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 3,
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(11),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // COLUMNA 1: FOTO PERFIL
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(2),
               child: Image.asset(
-                imagePath,
-                width: 60,
-                height: 60,
+                user.imagePath,
+                width: 58,
+                height: 58,
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 12),
-
-            // COLUMNA 2: DATOS
+            const SizedBox(width: 10),
             Expanded(
-              flex: 2,
+              flex: 3,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    user.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14, // reducido
+                      fontSize: 17,
                     ),
                   ),
-                  const SizedBox(height: 4),
-
-                  // Correo
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       Image.asset("assets/card_user/gmail.png", height: 14),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          email,
-                          style: const TextStyle(fontSize: 12),
+                          user.email,
+                          style: const TextStyle(fontSize: 15),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-
-                  // Teléfono
+                  const SizedBox(height: 2),
                   Row(
                     children: [
                       Image.asset("assets/card_user/telefono.png", height: 14),
-                      const SizedBox(width: 6),
-                      Text(phone, style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 5),
+                      Text(user.phone, style: const TextStyle(fontSize: 15)),
                     ],
                   ),
-                  const SizedBox(height: 3),
-
-                  // Carnet
+                  const SizedBox(height: 2),
                   Row(
                     children: [
                       Image.asset("assets/card_user/carnet.png", height: 14),
-                      const SizedBox(width: 6),
-                      Text(carnet, style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 5),
+                      Text(user.carnet, style: const TextStyle(fontSize: 15)),
                     ],
                   ),
                 ],
               ),
             ),
-
-            // COLUMNA 3: ROLE ARRIBA + BOTONES ABAJO
+            const SizedBox(width: 10),
             Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween, // distribuye arriba y abajo
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Cargo (Role) arriba
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 7,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: roleColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    color: roleColor.withAlpha((0.2 * 255).round()),
+                    borderRadius: BorderRadius.circular(7),
                   ),
                   child: Text(
-                    role,
+                    user.role,
                     style: TextStyle(
                       color: roleColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 15,
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 40), // espacio intermedio
-                // Botones Editar + Eliminar abajo
+                const SizedBox(height: 12),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Botón Editar
                     InkWell(
-                      onTap: () {}, // acción editar
+                      onTap: () => _openUserForm(user: user, index: index),
                       child: Image.asset(
                         "assets/card_user/editar.png",
-                        height: 20,
+                        height: 21,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 9),
+                    // Toggle Eliminar/Restaurar
                     InkWell(
-                      onTap: () {}, // acción eliminar
+                      onTap: () {
+                        setState(() {
+                          if (!user.isDeleted) {
+                            user.isDeleted = true;
+                            user.role = "Inactivo";
+                          } else {
+                            user.isDeleted = false;
+                            user.role = user.originalRole;
+                          }
+                        });
+                      },
                       child: Image.asset(
-                        "assets/card_user/eliminar.png",
-                        height: 20,
+                        user.isDeleted
+                            ? "assets/card_user/restaurar.png"
+                            : "assets/card_user/eliminar.png",
+                        height: 21,
                       ),
                     ),
                   ],
@@ -215,87 +241,24 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // HEADER
-          Container(
-            height: 60,
-            color: const Color(0xFFFF1100), // rojo header
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Logo + Hamburguesa
-                Row(
-                  children: [
-                    ColorFiltered(
-                      colorFilter: const ColorFilter.mode(
-                        Color.fromARGB(255, 230, 230, 230),
-                        BlendMode.srcIn,
-                      ),
-                      child: Image.asset("assets/header/Logo.png", height: 40),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildIconButton(
-                      "assets/header/MenuHeader.png",
-                      onTap: () {
-                        setState(() => _isSidebarOpen = !_isSidebarOpen);
-                      },
-                    ),
-                  ],
-                ),
-
-                // Botones derecha
-                Row(
-                  children: [
-                    _buildIconButton("assets/header/MesaHeader.png"),
-                    _buildIconButton("assets/header/PedidosHeader.png"),
-                    _buildIconButton("assets/header/AtencionHeader.png"),
-                  ],
-                ),
-              ],
-            ),
+          AppHeader(
+            onMenuTap: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
           ),
-
-          // SIDEBAR + CONTENIDO
           Expanded(
             child: Row(
               children: [
-                // SIDEBAR
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  width: _isSidebarOpen ? 60 : 0,
-                  decoration: const BoxDecoration(color: Color(0xFFF9F9F9)),
-                  child: _isSidebarOpen
-                      ? Column(
-                          children: [
-                            const SizedBox(height: 16),
-                            _profileIcon("assets/sidebar/PerfilUser.png"),
-                            _sidebarIcon("assets/sidebar/Home.png"),
-                            _sidebarIcon("assets/sidebar/Ventas.png"),
-                            _sidebarIcon("assets/sidebar/Pedidos.png"),
-                            _sidebarIcon(
-                              "assets/sidebar/Users.png",
-                              backgroundColor: Color(0xFFFF1100),
-                            ),
-                            _sidebarIcon("assets/sidebar/Mesas.png"),
-                            _sidebarIcon("assets/sidebar/Platos.png"),
-                            _sidebarIcon("assets/sidebar/Config.png"),
-                            _sidebarIcon("assets/sidebar/go_out.png"),
-                            const Spacer(),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
+                AppSidebar(
+                  isOpen: _isSidebarOpen,
+                  onItemTap: (item) => debugPrint("Clicked: $item"),
                 ),
-
-                // CONTENIDO PRINCIPAL
                 Expanded(
                   child: Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // HEADER DEL PANEL
+                        // HEADER PANEL
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -304,37 +267,33 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                                 Text(
                                   "Panel de usuarios",
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 SizedBox(width: 6),
-                                Icon(Icons.info_outline, color: Colors.red),
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.red,
+                                  size: 22,
+                                ),
                               ],
                             ),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        UserForm(), // 👈 tu pantalla
-                                  ),
-                                );
-                              },
+                              onPressed: () => _openUserForm(),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
                                 shape: const CircleBorder(),
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(13),
                               ),
                               child: const Icon(
                                 Icons.add,
-                                color: Color.fromARGB(255, 255, 255, 255),
+                                color: Colors.white,
+                                size: 22,
                               ),
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 16),
 
                         // FILTROS
@@ -360,7 +319,10 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                               .map(
                                 (role) => DropdownMenuItem(
                                   value: role,
-                                  child: Text(role),
+                                  child: Text(
+                                    role,
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
                                 ),
                               )
                               .toList(),
@@ -379,13 +341,15 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                               .map(
                                 (state) => DropdownMenuItem(
                                   value: state,
-                                  child: Text(state),
+                                  child: Text(
+                                    state,
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
                                 ),
                               )
                               .toList(),
                           onChanged: (value) {},
                         ),
-
                         const SizedBox(height: 16),
 
                         // BOTÓN DESCARGAR REPORTE
@@ -394,55 +358,29 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  6,
-                                ), // 👈 radio pequeño
+                                borderRadius: BorderRadius.circular(6),
                               ),
                             ),
                             onPressed: () {},
                             child: const Text(
                               "Descargar reporte",
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 16),
 
                         // LISTADO DE USUARIOS
                         Expanded(
-                          child: ListView(
-                            children: [
-                              _userCard(
-                                name: "Carlos Caycho",
-                                email: "carlos.caycho@vallegrande.edu.pe",
-                                phone: "903018604",
-                                carnet: "12345678",
-                                role: "Admin",
-                                imagePath: "assets/card_user/perfil1.png",
-                                roleColor: Colors.green,
-                              ),
-                              _userCard(
-                                name: "Alejandro Casas",
-                                email: "ale.cas@vallegrande.edu.pe",
-                                phone: "903018604",
-                                carnet: "87654321",
-                                role: "Mozo",
-                                imagePath: "assets/card_user/perfil2.png",
-                                roleColor: Colors.purple,
-                              ),
-                              _userCard(
-                                name: "Sebastian Conca",
-                                email: "seb.conca@vallegrande.edu.pe",
-                                phone: "903018604",
-                                carnet: "45678912",
-                                role: "Cajero",
-                                imagePath: "assets/card_user/perfil3.png",
-                                roleColor: Colors.red,
-                              ),
-                            ],
+                          child: ListView.builder(
+                            itemCount: users.length,
+                            itemBuilder: (context, index) =>
+                                _userCard(users[index], index),
                           ),
                         ),
                       ],
