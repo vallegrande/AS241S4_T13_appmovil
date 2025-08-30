@@ -289,7 +289,7 @@ class _UserFormState extends State<UserForm> {
         ),
         const SizedBox(height: 3),
         DropdownButtonFormField<String>(
-          value: selected,
+          initialValue: selected,
           items: items
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
