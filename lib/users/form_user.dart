@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import '../widgets/header.dart';
 import '../widgets/sidebar.dart';
 
@@ -15,7 +16,7 @@ class UserForm extends StatefulWidget {
   final String? rol;
   final String? telefono;
   final String? direccion;
-  final String? imagePath; // <-- agregar aquí
+  final String? imagePath;
 
   const UserForm({
     super.key,
@@ -99,7 +100,10 @@ class _UserFormState extends State<UserForm> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isEditing = widget.numeroDocumento != null;
+
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           AppHeader(
@@ -115,25 +119,25 @@ class _UserFormState extends State<UserForm> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Crear/Editar perfil de usuario",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                        Text(
+                          isEditing ? "Editar usuario" : "Crear nuevo usuario",
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Center(
                           child: Stack(
                             children: [
                               CircleAvatar(
-                                radius: 40,
+                                radius: 38,
                                 backgroundImage: _selectedImage != null
                                     ? FileImage(_selectedImage!)
-                                          as ImageProvider
                                     : const AssetImage(
-                                        "assets/formUser/defaultUser.png",
-                                      ),
+                                            "assets/formUser/defaultUser.png",
+                                          )
+                                          as ImageProvider,
                               ),
                               Positioned(
                                 bottom: 0,
@@ -141,12 +145,12 @@ class _UserFormState extends State<UserForm> {
                                 child: InkWell(
                                   onTap: _pickImage,
                                   child: const CircleAvatar(
-                                    radius: 15,
+                                    radius: 14,
                                     backgroundColor: Colors.red,
                                     child: Icon(
                                       Icons.edit,
                                       color: Colors.white,
-                                      size: 18,
+                                      size: 16,
                                     ),
                                   ),
                                 ),
@@ -154,7 +158,9 @@ class _UserFormState extends State<UserForm> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
+
+                        // Dropdowns e Inputs unificados
                         _buildDropdown(
                           "Tipo de documento",
                           ["DNI", "CNE"],
@@ -162,7 +168,7 @@ class _UserFormState extends State<UserForm> {
                           (val) => setState(() => _selectedTipoDocumento = val),
                         ),
                         _buildTextField(
-                          "Numero de documento",
+                          "Número de documento",
                           controller: _numeroDocumentoController,
                         ),
                         _buildTextField(
@@ -174,14 +180,14 @@ class _UserFormState extends State<UserForm> {
                           controller: _apellidosController,
                         ),
                         _buildDropdown(
-                          "Genero",
+                          "Género",
                           ["Masculino", "Femenino", "Otros"],
                           _selectedGenero,
                           (val) => setState(() => _selectedGenero = val),
                         ),
                         _buildTextField("Gmail", controller: _gmailController),
                         _buildTextField(
-                          "Contrasena",
+                          "Contraseña",
                           obscure: true,
                           controller: _contrasenaController,
                         ),
@@ -192,14 +198,14 @@ class _UserFormState extends State<UserForm> {
                           (val) => setState(() => _selectedRol = val),
                         ),
                         _buildTextField(
-                          "Telefono",
+                          "Teléfono",
                           controller: _telefonoController,
                         ),
                         _buildTextField(
-                          "Direccion",
+                          "Dirección",
                           controller: _direccionController,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -207,13 +213,19 @@ class _UserFormState extends State<UserForm> {
                               onPressed: () => Navigator.pop(context),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                               ),
-                              child: const Text("Cancelar"),
+                              child: const Text(
+                                "Cancelar",
+                                style: TextStyle(fontSize: 13),
+                              ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             ElevatedButton(
                               onPressed: () {
-                                // Retornar datos al panel
                                 Navigator.pop(context, {
                                   "tipoDocumento": _selectedTipoDocumento,
                                   "numeroDocumento":
@@ -231,8 +243,15 @@ class _UserFormState extends State<UserForm> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                               ),
-                              child: const Text("Guardar"),
+                              child: const Text(
+                                "Guardar",
+                                style: TextStyle(fontSize: 13),
+                              ),
                             ),
                           ],
                         ),
@@ -253,24 +272,39 @@ class _UserFormState extends State<UserForm> {
     bool obscure = false,
     TextEditingController? controller,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-        const SizedBox(height: 3),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          decoration: InputDecoration(
-            hintText: "Ingrese $label",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscure,
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+        decoration: InputDecoration(
+          labelText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          labelStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+          hintText: "Ingrese $label",
+          hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 15,
+            horizontal: 15,
           ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+          ),
+          filled: true,
+          fillColor: Colors.white,
         ),
-        const SizedBox(height: 10),
-      ],
+      ),
     );
   }
 
@@ -280,26 +314,77 @@ class _UserFormState extends State<UserForm> {
     String? selected,
     void Function(String?) onChange,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          labelStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 0,
+            horizontal: 0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+          ),
+          filled: true,
+          fillColor: Colors.white,
         ),
-        const SizedBox(height: 3),
-        DropdownButtonFormField<String>(
-          initialValue: selected,
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: onChange,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton2<String>(
+            isExpanded: true,
+            value: selected,
+            hint: Text(
+              "Seleccione $label",
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            items: items
+                .map(
+                  (item) => DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item, style: const TextStyle(fontSize: 14)),
+                  ),
+                )
+                .toList(),
+            onChanged: onChange,
+            buttonStyleData: ButtonStyleData(
+              height: 48,
+              padding: EdgeInsets.zero,
+              decoration: null,
+            ),
+            dropdownStyleData: DropdownStyleData(
+              maxHeight: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+              ),
+              elevation: 4,
+              scrollbarTheme: ScrollbarThemeData(
+                radius: const Radius.circular(8),
+                thickness: MaterialStateProperty.all(6),
+                thumbColor: MaterialStateProperty.all(Colors.grey.shade400),
+              ),
+            ),
+            menuItemStyleData: const MenuItemStyleData(height: 40),
+            iconStyleData: const IconStyleData(
+              icon: Icon(
+                Icons.arrow_drop_down_circle_outlined,
+                color: Colors.blueAccent,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-      ],
+      ),
     );
   }
 }
