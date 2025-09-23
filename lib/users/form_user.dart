@@ -103,19 +103,19 @@ class _UserFormState extends State<UserForm> {
     final bool isEditing = widget.numeroDocumento != null;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
+      body: Stack(
         children: [
-          AppHeader(
-            onMenuTap: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                AppSidebar(isOpen: _isSidebarOpen, onItemTap: (_) {}),
-                Expanded(
+          // Contenido principal
+          Column(
+            children: [
+              AppHeader(
+                onMenuTap: () => setState(() => _isSidebarOpen = true),
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -259,8 +259,17 @@ class _UserFormState extends State<UserForm> {
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          
+          // Sidebar (se superpone al contenido)
+          AppSidebar(
+            isOpen: _isSidebarOpen,
+            onItemTap: (item) {
+              setState(() => _isSidebarOpen = false);
+            },
+            onClose: () => setState(() => _isSidebarOpen = false),
           ),
         ],
       ),
@@ -371,8 +380,8 @@ class _UserFormState extends State<UserForm> {
               elevation: 4,
               scrollbarTheme: ScrollbarThemeData(
                 radius: const Radius.circular(8),
-                thickness: MaterialStateProperty.all(6),
-                thumbColor: MaterialStateProperty.all(Colors.grey.shade400),
+                thickness: WidgetStateProperty.all(6),
+                thumbColor: WidgetStateProperty.all(Colors.grey.shade400),
               ),
             ),
             menuItemStyleData: const MenuItemStyleData(height: 40),

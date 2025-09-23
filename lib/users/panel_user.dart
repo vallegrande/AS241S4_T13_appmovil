@@ -3,7 +3,6 @@ import 'package:myapp/users/form_user.dart';
 import '../widgets/header.dart';
 import '../widgets/sidebar.dart';
 
-// Modelo simple de usuario
 class User {
   String name;
   String email;
@@ -22,7 +21,7 @@ class User {
     required this.role,
     required this.imagePath,
     this.isDeleted = false,
-  }) : originalRole = role; // Guardamos el rol original
+  }) : originalRole = role; 
 }
 
 class PanelUserScreen extends StatefulWidget {
@@ -239,156 +238,161 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          AppHeader(
-            onMenuTap: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                AppSidebar(
-                  isOpen: _isSidebarOpen,
-                  onItemTap: (item) => debugPrint("Clicked: $item"),
-                ),
-                Expanded(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER PANEL
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: const [
-                                Text(
-                                  "Panel de usuarios",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+          // Contenido principal
+          Column(
+            children: [
+              AppHeader(
+                onMenuTap: () => setState(() => _isSidebarOpen = true),
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // HEADER PANEL
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Text(
+                                "Panel de usuarios",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                SizedBox(width: 6),
-                                Icon(
-                                  Icons.info_outline,
-                                  color: Colors.red,
-                                  size: 22,
-                                ),
-                              ],
-                            ),
-                            ElevatedButton(
-                              onPressed: () => _openUserForm(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                shape: const CircleBorder(),
-                                padding: const EdgeInsets.all(13),
                               ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
+                              SizedBox(width: 6),
+                              Icon(
+                                Icons.info_outline,
+                                color: Colors.red,
                                 size: 22,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // FILTROS
-                        TextField(
-                          decoration: InputDecoration(
-                            hintText: "Buscar usuarios",
-                            prefixIcon: const Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          hint: const Text("Todos los roles"),
-                          items: ["Admin", "Mozo", "Cajero", "Cocinero"]
-                              .map(
-                                (role) => DropdownMenuItem(
-                                  value: role,
-                                  child: Text(
-                                    role,
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {},
-                        ),
-                        const SizedBox(height: 12),
-
-                        DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          hint: const Text("Todos los estados"),
-                          items: ["Activo", "Inactivo"]
-                              .map(
-                                (state) => DropdownMenuItem(
-                                  value: state,
-                                  child: Text(
-                                    state,
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {},
-                        ),
-                        const SizedBox(height: 16),
-
-                        // BOTÓN DESCARGAR REPORTE
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
+                          ElevatedButton(
+                            onPressed: () => _openUserForm(),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
+                              backgroundColor: Colors.red,
+                              shape: const CircleBorder(),
+                              padding: const EdgeInsets.all(13),
                             ),
-                            onPressed: () {},
-                            child: const Text(
-                              "Descargar reporte",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 22,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                        // LISTADO DE USUARIOS
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: users.length,
-                            itemBuilder: (context, index) =>
-                                _userCard(users[index], index),
+                      // FILTROS
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: "Buscar usuarios",
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        hint: const Text("Todos los roles"),
+                        items: ["Admin", "Mozo", "Cajero", "Cocinero"]
+                            .map(
+                              (role) => DropdownMenuItem(
+                                value: role,
+                                child: Text(
+                                  role,
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {},
+                      ),
+                      const SizedBox(height: 12),
+
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        hint: const Text("Todos los estados"),
+                        items: ["Activo", "Inactivo"]
+                            .map(
+                              (state) => DropdownMenuItem(
+                                value: state,
+                                child: Text(
+                                  state,
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {},
+                      ),
+                      const SizedBox(height: 16),
+
+                      // BOTÓN DESCARGAR REPORTE
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          onPressed: () {},
+                          child: const Text(
+                            "Descargar reporte",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // LISTADO DE USUARIOS
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: users.length,
+                          itemBuilder: (context, index) =>
+                              _userCard(users[index], index),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          
+          // Sidebar (se superpone al contenido)
+          AppSidebar(
+            isOpen: _isSidebarOpen,
+            onItemTap: (item) {
+              setState(() => _isSidebarOpen = false);
+              debugPrint("Clicked: $item");
+            },
+            onClose: () => setState(() => _isSidebarOpen = false),
           ),
         ],
       ),

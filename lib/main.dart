@@ -1,3 +1,4 @@
+// lib/main.dart (unchanged, but with navigation context)
 import 'package:flutter/material.dart';
 import 'auth/login_page.dart';
 
@@ -14,7 +15,7 @@ class FoodTrackApp extends StatelessWidget {
       title: 'Food Track System',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.red),
-      home: const LoginPage(), // arranca en login
+      home: const LoginPage(), // Starts with login
     );
   }
 }

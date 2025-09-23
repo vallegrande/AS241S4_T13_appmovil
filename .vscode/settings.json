@@ -1,0 +1,7 @@
+{
+    "java.project.sourcePaths": [
+        "lib/auth",
+        "lib/Dishes",
+        "lib"
+    ]
+}

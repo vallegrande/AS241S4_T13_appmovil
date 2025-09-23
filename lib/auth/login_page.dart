@@ -1,9 +1,57 @@
+// lib/auth/login_page.dart
 import 'package:flutter/material.dart';
 import 'admin_page.dart';
 import '../users/panel_user.dart';
+import '../main_screen.dart'; // Import MainScreen
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _errorMessage;
+
+  void _login() {
+    // Simple validation
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Por favor, complete todos los campos.';
+      });
+      return;
+    }
+
+    // Simulate successful login (replace with your auth logic)
+    if (_usernameController.text == 'dario' && _passwordController.text == 'dario123') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Usuario o contraseña incorrectos.';
+      });
+    }
+  }
+
+  void _adminLogin() {
+    // Admin logic (keep original navigation)
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AdminPage()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +89,9 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 30),
 
                 // Usuario
-                const TextField(
-                  decoration: InputDecoration(
+                TextField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(
                     labelText: "Usuario",
                     prefixIcon: Icon(Icons.person, color: Colors.red),
                     border: UnderlineInputBorder(),
@@ -51,14 +100,22 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // Contraseña
-                const TextField(
+                TextField(
+                  controller: _passwordController,
                   obscureText: true,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: "Contraseña",
                     prefixIcon: Icon(Icons.lock, color: Colors.red),
                     border: UnderlineInputBorder(),
                   ),
                 ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ],
                 const SizedBox(height: 30),
 
                 // Botón ingresar (va al panel_user)
@@ -69,14 +126,7 @@ class LoginPage extends StatelessWidget {
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PanelUserScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: _login,
                     child: const Text(
                       "Ingresar",
                       style: TextStyle(color: Colors.white),
@@ -94,14 +144,7 @@ class LoginPage extends StatelessWidget {
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminPage(),
-                        ),
-                      );
-                    },
+                    onPressed: _adminLogin,
                     child: const Text(
                       "Administrador",
                       style: TextStyle(color: Colors.white),
