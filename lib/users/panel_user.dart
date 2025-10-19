@@ -1,28 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:myapp/users/form_user.dart';
+import 'package:dropdown_button2/dropdown_button2.dart'; 
+import '../services/user_service.dart';
+import 'form_user.dart';
 import '../widgets/header.dart';
-import '../widgets/sidebar.dart';
-
-class User {
-  String name;
-  String email;
-  String phone;
-  String carnet;
-  String role;
-  String imagePath;
-  bool isDeleted;
-  String originalRole;
-
-  User({
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.carnet,
-    required this.role,
-    required this.imagePath,
-    this.isDeleted = false,
-  }) : originalRole = role; 
-}
 
 class PanelUserScreen extends StatefulWidget {
   const PanelUserScreen({super.key});
@@ -32,76 +12,158 @@ class PanelUserScreen extends StatefulWidget {
 }
 
 class _PanelUserScreenState extends State<PanelUserScreen> {
-  bool _isSidebarOpen = false;
+  final UserService _userService = UserService();
+  List<User> users = [];
+  List<User> filteredUsers = [];
+  bool _isLoading = true;
+  String? _error;
 
-  List<User> users = [
-    User(
-      name: "Carlos Caycho",
-      email: "carlos.caycho@vallegrande.edu.pe",
-      phone: "903018604",
-      carnet: "12345678",
-      role: "Admin",
-      imagePath: "assets/card_user/perfil1.png",
-    ),
-    User(
-      name: "Alejandro Casas",
-      email: "ale.cas@vallegrande.edu.pe",
-      phone: "903018604",
-      carnet: "87654321",
-      role: "Mozo",
-      imagePath: "assets/card_user/perfil2.png",
-    ),
-    User(
-      name: "Sebastian Conca",
-      email: "seb.conca@vallegrande.edu.pe",
-      phone: "903018604",
-      carnet: "45678912",
-      role: "Cajero",
-      imagePath: "assets/card_user/perfil3.png",
-    ),
-  ];
+  bool? _filterState;
+  String? _filterRole;
+  List<Role> _roles = [];
+  final _searchController = TextEditingController();
 
-  // Abrir UserForm para agregar o editar
-  Future<void> _openUserForm({User? user, int? index}) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserForm(
-          nombres: user?.name,
-          gmail: user?.email,
-          telefono: user?.phone,
-          numeroDocumento: user?.carnet,
-          rol: user?.role,
-          imagePath: user?.imagePath,
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadRoles();
+    _fetchUsers();
+  }
 
-    if (result != null && result is Map<String, dynamic>) {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRoles() async {
+    try {
+      final roles = await _userService.getRoles();
+      if (!mounted) return;
       setState(() {
-        User newUser = User(
-          name: result["nombres"] ?? "",
-          email: result["gmail"] ?? "",
-          phone: result["telefono"] ?? "",
-          carnet: result["numeroDocumento"] ?? "",
-          role: result["rol"] ?? "Admin",
-          imagePath: result["imagePath"] ?? "assets/formUser/defaultUser.png",
-        );
+        _roles = roles;
+      });
+    } catch (e) {
+    }
+  }
 
-        if (index != null) {
-          users[index] = newUser;
-        } else {
-          users.add(newUser);
-        }
+  Future<void> _fetchUsers() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final fetchedUsers = await _userService.getUsers(
+        state: _filterState,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        users = fetchedUsers;
+        _applyFilters();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Error al cargar usuarios: $e';
+        _isLoading = false;
       });
     }
   }
 
+  void _applyFilters() {
+    filteredUsers = users.where((user) {
+      final searchText = _searchController.text.toLowerCase();
+      final matchesSearch = searchText.isEmpty ||
+          user.name.toLowerCase().contains(searchText) ||
+          user.surnames.toLowerCase().contains(searchText) ||
+          user.email.toLowerCase().contains(searchText) ||
+          user.documentNumber.contains(searchText);
+
+      final matchesRole = _filterRole == null || user.role.name == _filterRole;
+
+      return matchesSearch && matchesRole;
+    }).toList();
+  }
+
+  void _openUserForm({User? user}) {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => UserForm(user: user),
+          ),
+        )
+        .then((result) {
+      if (result == true) {
+        _fetchUsers();
+      }
+    });
+  }
+
+  Future<void> _softDeleteUser(int id) async {
+    setState(() { _isLoading = true; });
+    try {
+      await _userService.softDeleteUser(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Usuario eliminado correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _fetchUsers();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _restoreUser(int id) async {
+    setState(() { _isLoading = true; });
+    try {
+      await _userService.restoreUser(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Usuario restaurado correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _fetchUsers();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Color _getRoleColor(String roleName) {
+    final role = roleName.toLowerCase();
+    if (role.contains('admin')) return Colors.green;
+    if (role.contains('gerente')) return Colors.purple;
+    if (role.contains('cocinero') || role.contains('cajero')) return Colors.red;
+    if (role.contains('mozo') || role.contains('mesero')) return Colors.orange;
+    return Colors.blue;
+  }
+
   Widget _userCard(User user, int index) {
-    Color roleColor = Colors.grey;
-    if (user.role == "Admin") roleColor = Colors.green;
-    if (user.role == "Mozo") roleColor = Colors.purple;
-    if (user.role == "Cajero") roleColor = Colors.red;
+    final isActive = user.state;
+    final roleColor = _getRoleColor(user.role.name);
+
+    String? photoUrl;
+    if (user.profilePhoto != null && user.profilePhoto!.isNotEmpty) {
+      if (user.profilePhoto!.startsWith('http')) {
+        photoUrl = user.profilePhoto;
+      } else {
+        photoUrl = 'http://localhost:8080/uploads/${user.profilePhoto}';
+      }
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
@@ -113,13 +175,48 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // Foto de perfil
             ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: Image.asset(
-                user.imagePath,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
                 width: 58,
                 height: 58,
-                fit: BoxFit.cover,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: photoUrl != null
+                      ? Image.network(
+                          photoUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                strokeWidth: 2,
+                                color: const Color(0xFFFF1100),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            print('Error cargando foto: $error');
+                            return Image.asset(
+                              'assets/formUser/defaultUser.png',
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          'assets/formUser/defaultUser.png',
+                          fit: BoxFit.cover,
+                        ),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -130,11 +227,13 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user.name,
+                    '${user.name} ${user.surnames}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 17,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
                   Row(
@@ -151,19 +250,24 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Image.asset("assets/card_user/telefono.png", height: 14),
-                      const SizedBox(width: 5),
-                      Text(user.phone, style: const TextStyle(fontSize: 15)),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
+                  if (user.phone != null) ...[
+                    Row(
+                      children: [
+                        Image.asset("assets/card_user/telefono.png", height: 14),
+                        const SizedBox(width: 5),
+                        Text(user.phone!, style: const TextStyle(fontSize: 15)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                  ],
                   Row(
                     children: [
                       Image.asset("assets/card_user/carnet.png", height: 14),
                       const SizedBox(width: 5),
-                      Text(user.carnet, style: const TextStyle(fontSize: 15)),
+                      Text(
+                        '${user.documentType}: ${user.documentNumber}',
+                        style: const TextStyle(fontSize: 15),
+                      ),
                     ],
                   ),
                 ],
@@ -175,18 +279,17 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: roleColor.withAlpha((0.2 * 255).round()),
+                    color: isActive
+                        ? roleColor.withOpacity(0.2)
+                        : Colors.grey.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: Text(
-                    user.role,
+                    isActive ? user.role.name : 'Inactivo',
                     style: TextStyle(
-                      color: roleColor,
+                      color: isActive ? roleColor : Colors.grey,
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -196,32 +299,26 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Botón Editar
                     InkWell(
-                      onTap: () => _openUserForm(user: user, index: index),
+                      onTap: () => _openUserForm(user: user),
                       child: Image.asset(
                         "assets/card_user/editar.png",
                         height: 21,
                       ),
                     ),
                     const SizedBox(width: 9),
-                    // Toggle Eliminar/Restaurar
                     InkWell(
                       onTap: () {
-                        setState(() {
-                          if (!user.isDeleted) {
-                            user.isDeleted = true;
-                            user.role = "Inactivo";
-                          } else {
-                            user.isDeleted = false;
-                            user.role = user.originalRole;
-                          }
-                        });
+                        if (isActive) {
+                          _softDeleteUser(user.idUser!);
+                        } else {
+                          _restoreUser(user.idUser!);
+                        }
                       },
                       child: Image.asset(
-                        user.isDeleted
-                            ? "assets/card_user/restaurar.png"
-                            : "assets/card_user/eliminar.png",
+                        isActive
+                            ? "assets/card_user/eliminar.png"
+                            : "assets/card_user/restaurar.png",
                         height: 21,
                       ),
                     ),
@@ -238,14 +335,12 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Contenido principal
           Column(
             children: [
-              AppHeader(
-                onMenuTap: () => setState(() => _isSidebarOpen = true),
-              ),
+              const AppHeader(),
               Expanded(
                 child: Container(
                   color: Colors.white,
@@ -253,7 +348,6 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // HEADER PANEL
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -289,10 +383,14 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Todos tus usuarios',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
                       const SizedBox(height: 16),
-
-                      // FILTROS
                       TextField(
+                        controller: _searchController,
                         decoration: InputDecoration(
                           hintText: "Buscar usuarios",
                           prefixIcon: const Icon(Icons.search),
@@ -300,99 +398,172 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        onChanged: (value) {
+                          setState(() {
+                            _applyFilters();
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField2<String>(
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
+                        isExpanded: true,
                         hint: const Text("Todos los roles"),
-                        items: ["Admin", "Mozo", "Cajero", "Cocinero"]
-                            .map(
-                              (role) => DropdownMenuItem(
-                                value: role,
-                                child: Text(
-                                  role,
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {},
+                        value: _filterRole,
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text("Todos los roles", style: TextStyle(fontSize: 15)),
+                          ),
+                          ..._roles.map((role) => DropdownMenuItem(
+                            value: role.name,
+                            child: Text(role.name, style: const TextStyle(fontSize: 15)),
+                          )),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _filterRole = value;
+                            _applyFilters();
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField2<bool?>(
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
+                        isExpanded: true,
                         hint: const Text("Todos los estados"),
-                        items: ["Activo", "Inactivo"]
-                            .map(
-                              (state) => DropdownMenuItem(
-                                value: state,
-                                child: Text(
-                                  state,
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {},
+                        value: _filterState,
+                        items: const [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text("Todos los estados", style: TextStyle(fontSize: 15)),
+                          ),
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text("Activo", style: TextStyle(fontSize: 15)),
+                          ),
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text("Inactivo", style: TextStyle(fontSize: 15)),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _filterState = value;
+                          });
+                          _fetchUsers();
+                        },
                       ),
                       const SizedBox(height: 16),
 
-                      // BOTÓN DESCARGAR REPORTE
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Función en desarrollo')),
+                            );
+                          },
                           child: const Text(
                             "Descargar reporte",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // LISTADO DE USUARIOS
                       Expanded(
-                        child: ListView.builder(
-                          itemCount: users.length,
-                          itemBuilder: (context, index) =>
-                              _userCard(users[index], index),
-                        ),
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFFFF1100),
+                                ),
+                              )
+                            : _error != null
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          size: 64,
+                                          color: Colors.red,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          _error!,
+                                          style: const TextStyle(color: Colors.red),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ElevatedButton(
+                                          onPressed: _fetchUsers,
+                                          child: const Text('Reintentar'),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : filteredUsers.isEmpty
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.people_outline,
+                                              size: 64,
+                                              color: Colors.grey[400],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            const Text(
+                                              'No hay usuarios que coincidan con los filtros',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: Colors.grey,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: filteredUsers.length,
+                                        itemBuilder: (context, index) =>
+                                            _userCard(filteredUsers[index], index),
+                                      ),
                       ),
                     ],
                   ),
                 ),
               ),
             ],
-          ),
-          
-          // Sidebar (se superpone al contenido)
-          AppSidebar(
-            isOpen: _isSidebarOpen,
-            onItemTap: (item) {
-              setState(() => _isSidebarOpen = false);
-              debugPrint("Clicked: $item");
-            },
-            onClose: () => setState(() => _isSidebarOpen = false),
           ),
         ],
       ),

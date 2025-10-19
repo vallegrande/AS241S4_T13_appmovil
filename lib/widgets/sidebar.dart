@@ -1,4 +1,3 @@
-// lib/widgets/sidebar.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
@@ -6,14 +5,14 @@ class AppSidebar extends StatelessWidget {
   final bool isOpen;
   final Function(String)? onItemTap;
   final VoidCallback? onClose;
-  final String selectedItem; // Tracks the currently selected item
+  final String selectedItem;
 
   const AppSidebar({
     super.key,
     required this.isOpen,
     this.onItemTap,
     this.onClose,
-    this.selectedItem = 'Home', // Default to Home
+    this.selectedItem = 'Home',
   });
 
   Widget _profileIcon(
@@ -51,7 +50,6 @@ class AppSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Fondo semitransparente con blur
         if (isOpen)
           GestureDetector(
             onTap: onClose,
@@ -67,7 +65,6 @@ class AppSidebar extends StatelessWidget {
               ),
             ),
           ),
-        // Sidebar con animación
         AnimatedPositioned(
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeOutBack,
@@ -96,9 +93,8 @@ class AppSidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Encabezado del sidebar con altura fija
                   Container(
-                    height: 80, // Fixed height to avoid scroll
+                    height: 80,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -129,9 +125,8 @@ class AppSidebar extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1, color: Colors.grey),
-                  // Perfil de usuario con altura fija
                   Container(
-                    height: 100, // Fixed height to avoid scroll
+                    height: 100,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                     child: Row(
                       children: [
@@ -168,7 +163,6 @@ class AppSidebar extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1, color: Colors.grey),
-                  // Opciones del menú
                   Expanded(
                     child: SingleChildScrollView(
                       child: Padding(
@@ -184,6 +178,13 @@ class AppSidebar extends StatelessWidget {
                               "assets/sidebar/Users.png",
                               backgroundColor: selectedItem == 'Usuarios' ? const Color(0xFFFF1100) : null,
                               textColor: selectedItem == 'Usuarios' ? Colors.white : Colors.black87,
+                              selectedItem: selectedItem,
+                            ),
+                            _buildMenuItem(
+                              "Roles/Departamentos", 
+                              "assets/sidebar/Users.png", // Puedes usar un ícono diferente si lo tienes
+                              backgroundColor: selectedItem == 'Roles/Departamentos' ? const Color(0xFFFF1100) : null,
+                              textColor: selectedItem == 'Roles/Departamentos' ? Colors.white : Colors.black87,
                               selectedItem: selectedItem,
                             ),
                             _buildMenuItem("Mesas", "assets/sidebar/Mesas.png", selectedItem: selectedItem),
@@ -247,20 +248,23 @@ class AppSidebar extends StatelessWidget {
                 child: Image.asset(
                   iconPath,
                   height: 28,
-                  color: isSelected ? Colors.white : const Color(0xFFFF1100), // Red by default, white when selected
+                  color: isSelected ? Colors.white : const Color(0xFFFF1100),
                 ),
               ),
               const SizedBox(width: 16),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: 1.0,
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? Colors.white : textColor,
-                    letterSpacing: 0.3,
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: 1.0,
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : textColor,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

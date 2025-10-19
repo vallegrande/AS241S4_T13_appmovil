@@ -1,8 +1,6 @@
-// lib/auth/login_page.dart
 import 'package:flutter/material.dart';
-import 'admin_page.dart';
-import '../users/panel_user.dart';
-import '../main_screen.dart'; // Import MainScreen
+import '../services/user_service.dart';
+import '../main_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,10 +12,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   String? _errorMessage;
+  bool _isLoading = false;
 
-  void _login() {
-    // Simple validation
+  void _login() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
         _errorMessage = 'Por favor, complete todos los campos.';
@@ -25,25 +24,38 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Simulate successful login (replace with your auth logic)
-    if (_usernameController.text == 'dario' && _passwordController.text == 'dario123') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _authService.login(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
       );
-    } else {
+
       setState(() {
-        _errorMessage = 'Usuario o contraseña incorrectos.';
+        _isLoading = false;
+      });
+
+      if (result.success) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      } else {
+        setState(() {
+          _errorMessage = result.message ?? 'Usuario o contraseña incorrectos.';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Error de conexión: No se pudo contactar al servidor.';
       });
     }
-  }
-
-  void _adminLogin() {
-    // Admin logic (keep original navigation)
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AdminPage()),
-    );
   }
 
   @override
@@ -69,86 +81,171 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Image.asset(
                   "assets/header/Logo.png",
                   height: 200,
                   width: 400,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 40),
 
                 const Text(
                   "INGRESA TUS DATOS",
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 255, 0, 0),
+                    color: Color(0xFFFF1100),
+                    letterSpacing: 1.2,
                   ),
                 ),
                 const SizedBox(height: 30),
 
-                // Usuario
-                TextField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: "Usuario",
-                    prefixIcon: Icon(Icons.person, color: Colors.red),
-                    border: UnderlineInputBorder(),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: TextField(
+                    controller: _usernameController,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      labelText: "Usuario",
+                      labelStyle: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.person,
+                        color: Color(0xFFFF1100),
+                        size: 24,
+                      ),
+                      border: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Color(0xFFFF1100),
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 10,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Contraseña
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "Contraseña",
-                    prefixIcon: Icon(Icons.lock, color: Colors.red),
-                    border: UnderlineInputBorder(),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      labelText: "Contraseña",
+                      labelStyle: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.lock,
+                        color: Color(0xFFFF1100),
+                        size: 24,
+                      ),
+                      border: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Color(0xFFFF1100),
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 10,
+                      ),
+                    ),
                   ),
                 ),
+
                 if (_errorMessage != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                  const SizedBox(height: 15),
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-                const SizedBox(height: 30),
+                const SizedBox(height: 35),
 
-                // Botón ingresar (va al panel_user)
-                SizedBox(
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      backgroundColor: const Color(0xFFFF1100),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 3,
                     ),
-                    onPressed: _login,
-                    child: const Text(
-                      "Ingresar",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                    onPressed: _isLoading ? null : _login,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text(
+                            "Ingresar",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                   ),
                 ),
-
-                const SizedBox(height: 15),
-
-                // Botón administrador
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                    ),
-                    onPressed: _adminLogin,
-                    child: const Text(
-                      "Administrador",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                const SizedBox(height: 20),
+                const Text(
+                  "¿Olvidaste tu contraseña?",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
                   ),
                 ),
               ],

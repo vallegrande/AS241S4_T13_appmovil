@@ -1,10 +1,11 @@
-// lib/main_screen.dart
 import 'package:flutter/material.dart';
 import 'widgets/header.dart';
 import 'widgets/sidebar.dart';
+import 'users/panel_user.dart';
+import 'users/panel_rolAndDepartament.dart';
 import 'Dishes/panel_dishes.dart';
-import 'users/panel_user.dart'; // Use the provided PanelUserScreen
-import 'auth/login_page.dart'; // For logout navigation
+import 'auth/login_page.dart';
+import 'services/user_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,7 +16,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool isSidebarOpen = false;
-  String currentPage = 'Home'; // Track current content to display
+  String currentPage = 'Home';
 
   void _toggleSidebar() {
     setState(() {
@@ -24,66 +25,108 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _handleMenuTap(String item) {
-    print('Selected item: $item'); // Debug log
-    setState(() {
-      currentPage = item;
-      isSidebarOpen = false; // Close sidebar after selection
-    });
-  }
-
-  Widget _buildContent() {
-    switch (currentPage) {
-      case 'Home':
-        return const Center(child: Text('Home Content'));
-      case 'Platos':
-        return const PanelDishes(); // Improved dishes panel
-      case 'Usuarios': // Changed from 'Users' to 'Usuarios'
-        return const PanelUserScreen(); // Use the provided users panel
-      case 'Ventas':
-        return const Center(child: Text('Ventas Content'));
-      case 'Pedidos':
-        return const Center(child: Text('Pedidos Content'));
-      case 'Mesas':
-        return const Center(child: Text('Mesas Content'));
-      case 'Config':
-        return const Center(child: Text('Config Content'));
-      case 'Salir':
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
-        return Container(); // Placeholder while navigating
-      default:
-        return const Center(child: Text('Default Content'));
+    if (item == 'Salir') {
+      TokenManager.clear();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    } else {
+      setState(() {
+        currentPage = item;
+        isSidebarOpen = false;
+      });
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    setState(() {}); // Force initial rebuild to sync state
+  Widget _buildContent() {
+    Widget content;
+
+    switch (currentPage) {
+      case 'Home':
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.dashboard, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                Text(
+                  'Bienvenido al Dashboard',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Selecciona una opción del menú',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        );
+        break;
+      case 'Usuarios':
+        content = const PanelUserScreen();
+        break;
+      case 'Platos':
+        content = const PanelDishes();
+        break;
+      case 'Roles/Departamentos':
+        content = const PanelRolAndDepartament();
+        break;
+      case 'Ventas':
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: const Center(child: Text('Ventas Content', style: TextStyle(fontSize: 18))),
+        );
+        break;
+      case 'Pedidos':
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: const Center(child: Text('Pedidos Content', style: TextStyle(fontSize: 18))),
+        );
+        break;
+      case 'Mesas':
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: const Center(child: Text('Mesas Content', style: TextStyle(fontSize: 18))),
+        );
+        break;
+      case 'Config':
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: const Center(child: Text('Configuración', style: TextStyle(fontSize: 18))),
+        );
+        break;
+      default:
+        content = Container(
+          color: const Color(0xFFF5F5F5),
+          child: const Center(child: Text('Default Content', style: TextStyle(fontSize: 18))),
+        );
+        break;
+    }
+    return content;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
         children: [
-          // Main content area
           _buildContent(),
-          // Header (fixed at top)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: AppHeader(onMenuTap: _toggleSidebar),
           ),
-          // Sidebar (overlay)
           AppSidebar(
             isOpen: isSidebarOpen,
-            onItemTap: _handleMenuTap,
             onClose: _toggleSidebar,
-            selectedItem: currentPage, // Pass current page for highlighting
+            onItemTap: _handleMenuTap,
+            selectedItem: currentPage,
           ),
         ],
       ),
