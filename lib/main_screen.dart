@@ -3,9 +3,21 @@ import 'widgets/header.dart';
 import 'widgets/sidebar.dart';
 import 'users/panel_user.dart';
 import 'users/panel_rolAndDepartament.dart';
-import 'Dishes/panel_dishes.dart';
+import 'Dishes/catalog_page.dart';
 import 'auth/login_page.dart';
 import 'services/user_service.dart';
+
+// Enum para gestionar las páginas de forma segura
+enum AppPage {
+  Home,
+  Usuarios,
+  Platos,
+  RolesDepartamentos,
+  Ventas,
+  Pedidos,
+  Mesas,
+  Config,
+}
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,7 +28,19 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool isSidebarOpen = false;
-  String currentPage = 'Home';
+  AppPage currentPage = AppPage.Home; // Usar el enum
+
+  // Mapa para convertir los strings del menú a enums
+  static const Map<String, AppPage> pageMap = {
+    'Home': AppPage.Home,
+    'Usuarios': AppPage.Usuarios,
+    'Platos': AppPage.Platos,
+    'Roles/Departamentos': AppPage.RolesDepartamentos,
+    'Ventas': AppPage.Ventas,
+    'Pedidos': AppPage.Pedidos,
+    'Mesas': AppPage.Mesas,
+    'Config': AppPage.Config,
+  };
 
   void _toggleSidebar() {
     setState(() {
@@ -33,18 +57,25 @@ class _MainScreenState extends State<MainScreen> {
       );
     } else {
       setState(() {
-        currentPage = item;
+        // Convertir el string a enum usando el mapa
+        currentPage = pageMap[item] ?? AppPage.Home;
         isSidebarOpen = false;
       });
     }
   }
 
-  Widget _buildContent() {
-    Widget content;
+  // Widget reutilizable para contenido de marcador de posición
+  Widget _buildPlaceholderContent(String title) {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      child: Center(child: Text(title, style: const TextStyle(fontSize: 18))),
+    );
+  }
 
+  Widget _buildContent() {
     switch (currentPage) {
-      case 'Home':
-        content = Container(
+      case AppPage.Home:
+        return Container(
           color: const Color(0xFFF5F5F5),
           child: Center(
             child: Column(
@@ -65,52 +96,32 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         );
-        break;
-      case 'Usuarios':
-        content = const PanelUserScreen();
-        break;
-      case 'Platos':
-        content = const PanelDishes();
-        break;
-      case 'Roles/Departamentos':
-        content = const PanelRolAndDepartament();
-        break;
-      case 'Ventas':
-        content = Container(
-          color: const Color(0xFFF5F5F5),
-          child: const Center(child: Text('Ventas Content', style: TextStyle(fontSize: 18))),
-        );
-        break;
-      case 'Pedidos':
-        content = Container(
-          color: const Color(0xFFF5F5F5),
-          child: const Center(child: Text('Pedidos Content', style: TextStyle(fontSize: 18))),
-        );
-        break;
-      case 'Mesas':
-        content = Container(
-          color: const Color(0xFFF5F5F5),
-          child: const Center(child: Text('Mesas Content', style: TextStyle(fontSize: 18))),
-        );
-        break;
-      case 'Config':
-        content = Container(
-          color: const Color(0xFFF5F5F5),
-          child: const Center(child: Text('Configuración', style: TextStyle(fontSize: 18))),
-        );
-        break;
+      case AppPage.Usuarios:
+        return const PanelUserScreen();
+      case AppPage.Platos:
+        return const CatalogPage();
+      case AppPage.RolesDepartamentos:
+        return const PanelRolAndDepartament();
+      case AppPage.Ventas:
+        return _buildPlaceholderContent('Ventas Content');
+      case AppPage.Pedidos:
+        return _buildPlaceholderContent('Pedidos Content');
+      case AppPage.Mesas:
+        return _buildPlaceholderContent('Mesas Content');
+      case AppPage.Config:
+        return _buildPlaceholderContent('Configuración');
       default:
-        content = Container(
-          color: const Color(0xFFF5F5F5),
-          child: const Center(child: Text('Default Content', style: TextStyle(fontSize: 18))),
-        );
-        break;
+        return _buildPlaceholderContent('Default Content');
     }
-    return content;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Convierte el enum a string para el `selectedItem` del sidebar
+    final selectedItemString = pageMap.entries
+        .firstWhere((entry) => entry.value == currentPage, orElse: () => pageMap.entries.first)
+        .key;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(
@@ -126,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
             isOpen: isSidebarOpen,
             onClose: _toggleSidebar,
             onItemTap: _handleMenuTap,
-            selectedItem: currentPage,
+            selectedItem: selectedItemString,
           ),
         ],
       ),

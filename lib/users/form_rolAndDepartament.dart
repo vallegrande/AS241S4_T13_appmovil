@@ -1,11 +1,17 @@
+// Archivo: lib/users/form_rolAndDepartament.dart
 import 'package:flutter/material.dart';
-import '../services/user_service.dart';
+// Importa clases auxiliares (Role, Department, ConflictException) y UserService (para DniData)
+import '../services/user_service.dart'; 
+// Importa los servicios funcionales
+import '../services/role_service.dart'; 
+import '../services/department_service.dart';
 import '../widgets/header.dart';
 import 'panel_rolAndDepartament.dart';
 
 class FormRolAndDepartament extends StatefulWidget {
   final EntityType entityType;
-  final dynamic entity;
+  // Asumimos que entity puede ser Role o Department (ambos de user_service.dart)
+  final dynamic entity; 
 
   const FormRolAndDepartament({
     super.key,
@@ -19,7 +25,10 @@ class FormRolAndDepartament extends StatefulWidget {
 
 class _FormRolAndDepartamentState extends State<FormRolAndDepartament> {
   final _formKey = GlobalKey<FormState>();
-  final UserService _userService = UserService();
+  // Usamos los servicios funcionales extraídos
+  final RoleService _roleService = RoleService(); 
+  final DepartmentService _departmentService = DepartmentService();
+  
   late TextEditingController _nameController;
   bool _isLoading = false;
   String? _errorMessage;
@@ -35,9 +44,11 @@ class _FormRolAndDepartamentState extends State<FormRolAndDepartament> {
 
     if (isEditing) {
       if (widget.entityType == EntityType.role) {
-        _nameController.text = (widget.entity as Role).name;
+        // Casteo seguro al modelo Role del user_service
+        _nameController.text = (widget.entity as Role).name; 
       } else {
-        _nameController.text = (widget.entity as Department).name;
+        // Casteo seguro al modelo Department del user_service
+        _nameController.text = (widget.entity as Department).name; 
       }
     }
   }
@@ -50,16 +61,18 @@ class _FormRolAndDepartamentState extends State<FormRolAndDepartament> {
 
   Future<void> _handleRoleSave() async {
     final name = _nameController.text.trim();
-    final roleId = isEditing ? (widget.entity as Role).id : null;
+    // Usa Role del user_service
+    final roleId = isEditing ? (widget.entity as Role).id : null; 
     final newRole = Role(id: roleId, name: name);
-    await _userService.saveRole(newRole);
+    await _roleService.saveRole(newRole);
   }
 
   Future<void> _handleDepartmentSave() async {
     final name = _nameController.text.trim();
-    final deptId = isEditing ? (widget.entity as Department).id : null;
+    // Usa Department del user_service
+    final deptId = isEditing ? (widget.entity as Department).id : null; 
     final newDept = Department(id: deptId, name: name);
-    await _userService.saveDepartment(newDept);
+    await _departmentService.saveDepartment(newDept);
   }
 
   Future<void> _saveEntity() async {
@@ -111,6 +124,7 @@ class _FormRolAndDepartamentState extends State<FormRolAndDepartament> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (El cuerpo del widget no necesita más cambios)
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Stack(

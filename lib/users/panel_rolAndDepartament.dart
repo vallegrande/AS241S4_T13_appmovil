@@ -1,5 +1,10 @@
+// Archivo: lib/users/panel_rolAndDepartament.dart
 import 'package:flutter/material.dart';
-import '../services/user_service.dart';
+// Importa las clases de modelo y auxiliares desde user_service.dart (archivo intocable)
+import '../services/user_service.dart'; 
+// Importa los servicios funcionales extraídos
+import '../services/role_service.dart'; 
+import '../services/department_service.dart';
 import 'form_rolAndDepartament.dart';
 import '../widgets/header.dart';
 
@@ -13,7 +18,10 @@ class PanelRolAndDepartament extends StatefulWidget {
 }
 
 class _PanelRolAndDepartamentState extends State<PanelRolAndDepartament> {
-  final UserService _userService = UserService();
+  // Usamos los servicios funcionales nuevos
+  final RoleService _roleService = RoleService(); 
+  final DepartmentService _departmentService = DepartmentService();
+  
   EntityType _currentEntity = EntityType.role;
   List<Role> _roles = [];
   List<Department> _departments = [];
@@ -32,8 +40,10 @@ class _PanelRolAndDepartamentState extends State<PanelRolAndDepartament> {
       _error = null;
     });
     try {
-      final fetchedRoles = await _userService.getRoles();
-      final fetchedDepartments = await _userService.getDepartments();
+      // Llamada a los servicios funcionales
+      final fetchedRoles = await _roleService.getRoles(); 
+      final fetchedDepartments = await _departmentService.getDepartments();
+      
       if (!mounted) return;
       setState(() {
         _roles = fetchedRoles;
@@ -49,6 +59,7 @@ class _PanelRolAndDepartamentState extends State<PanelRolAndDepartament> {
     }
   }
 
+  // ... (Resto de la UI y métodos sin cambios) ...
   void _openForm({dynamic entity, required EntityType type}) {
     Navigator.of(context)
         .push(

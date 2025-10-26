@@ -1,6 +1,10 @@
+// Archivo: lib/users/panel_user.dart
 import 'package:flutter/material.dart';
 import 'package:dropdown_button2/dropdown_button2.dart'; 
+// Importa clases auxiliares (User, Role) desde user_service.dart
 import '../services/user_service.dart';
+// Importa el servicio de roles funcional
+import '../services/role_service.dart';
 import 'form_user.dart';
 import '../widgets/header.dart';
 
@@ -13,6 +17,8 @@ class PanelUserScreen extends StatefulWidget {
 
 class _PanelUserScreenState extends State<PanelUserScreen> {
   final UserService _userService = UserService();
+  final RoleService _roleService = RoleService(); // Usamos el servicio extraído
+  
   List<User> users = [];
   List<User> filteredUsers = [];
   bool _isLoading = true;
@@ -38,7 +44,7 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
 
   Future<void> _loadRoles() async {
     try {
-      final roles = await _userService.getRoles();
+      final roles = await _roleService.getRoles(); // Usamos RoleService
       if (!mounted) return;
       setState(() {
         _roles = roles;
@@ -47,6 +53,7 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
     }
   }
 
+  // ... (Resto de la lógica sin cambios mayores, ya que usa _userService)
   Future<void> _fetchUsers() async {
     setState(() {
       _isLoading = true;

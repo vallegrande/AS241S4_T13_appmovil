@@ -1,15 +1,18 @@
+// Archivo: lib/users/form_user.dart
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+// Importa clases auxiliares (User, Role, Department, ConflictException, NotFoundException) 
+// desde user_service.dart
 import '../services/user_service.dart';
 import '../widgets/header.dart';
 import 'dart:typed_data';
 
 class UserForm extends StatefulWidget {
-  final User? user;
+  final User? user; 
   const UserForm({super.key, this.user});
   @override
   State<UserForm> createState() => _UserFormState();
@@ -17,6 +20,7 @@ class UserForm extends StatefulWidget {
 
 class _UserFormState extends State<UserForm> {
   final UserService _userService = UserService();
+  
   final _formKey = GlobalKey<FormState>();
   final _nombresController = TextEditingController();
   final _apellidosController = TextEditingController();
@@ -74,6 +78,10 @@ class _UserFormState extends State<UserForm> {
     super.dispose();
   }
 
+  // **********************************************
+  // MÉTODOS AUXILIARES Y LÓGICA DE HORAS (Restaurados)
+  // **********************************************
+  
   void _initializeFields(User user) {
     _nombresController.text = user.name;
     _apellidosController.text = user.surnames;
@@ -85,7 +93,8 @@ class _UserFormState extends State<UserForm> {
     _selectedGender = user.gender;
     _horaInicioController.text = user.horaInicio ?? '';
     _horaFinController.text = user.horaFin ?? '';
-    _plannedHoursController.text = user.plannedHours?.toString() ?? '';
+    // Usamos toString() ya que plannedHours es double? ahora
+    _plannedHoursController.text = user.plannedHours?.toString() ?? ''; 
     _selectedTurno = user.turno;
     _hourlyRateController.text = user.hourlyRate?.toString() ?? '';
   }
@@ -103,7 +112,8 @@ class _UserFormState extends State<UserForm> {
         if (hours < 0 || (hours == 0 && minutes < 0)) hours += 24;
         final totalHours = hours + (minutes / 60.0);
         setState(() {
-          _plannedHoursController.text = totalHours.toStringAsFixed(0);
+          // Usamos toStringAsFixed(1) para mantener el decimal si es necesario
+          _plannedHoursController.text = totalHours.toStringAsFixed(1); 
           _selectedTurno = _determineTurno(startTime);
         });
       }
@@ -141,6 +151,7 @@ class _UserFormState extends State<UserForm> {
       _errorMessage = null;
     });
     try {
+      // Usamos los métodos de UserService ya definidos
       final fetchedRoles = await _userService.getRoles();
       final fetchedDepartments = await _userService.getDepartments();
       if (!mounted) return;
@@ -257,6 +268,10 @@ class _UserFormState extends State<UserForm> {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    final plannedHoursValue = double.tryParse(_plannedHoursController.text.trim());
+    final hourlyRateValue = double.tryParse(_hourlyRateController.text.trim());
+
     final newUser = User(
       idUser: isEditing ? widget.user!.idUser : null,
       documentType: _selectedTipoDocumento!,
@@ -275,9 +290,11 @@ class _UserFormState extends State<UserForm> {
       registrationDate: isEditing ? widget.user!.registrationDate : null,
       horaInicio: _horaInicioController.text.trim().isEmpty ? null : _horaInicioController.text.trim(),
       horaFin: _horaFinController.text.trim().isEmpty ? null : _horaFinController.text.trim(),
-      plannedHours: _plannedHoursController.text.trim().isEmpty ? null : int.tryParse(_plannedHoursController.text.trim()),
+      // Corregido: Usar el valor double parseado
+      plannedHours: plannedHoursValue, 
       turno: _selectedTurno,
-      hourlyRate: _hourlyRateController.text.trim().isEmpty ? null : double.tryParse(_hourlyRateController.text.trim()),
+      // Corregido: Usar el valor double parseado
+      hourlyRate: hourlyRateValue, 
     );
     try {
       User savedUser = await _userService.saveUser(newUser);
@@ -285,13 +302,13 @@ class _UserFormState extends State<UserForm> {
         try {
           await _userService.uploadProfilePhotoWeb(savedUser.idUser!, _webImage!, _imageFileName!);
         } catch (e) {
-          if (kDebugMode) print('Error al subir foto: $e');
+          if (kDebugMode) print('Error al subir foto (Web): $e');
         }
       } else if (!kIsWeb && _imageFile != null) {
         try {
           await _userService.uploadProfilePhoto(savedUser.idUser!, _imageFile!);
         } catch (e) {
-          if (kDebugMode) print('Error al subir foto: $e');
+          if (kDebugMode) print('Error al subir foto (Móvil/Desktop): $e');
         }
       }
       if (!mounted) return;
