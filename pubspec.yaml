@@ -1,4 +1,4 @@
-name: myapp
+name: as241s4_t13_appmovil
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -28,15 +28,13 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  image_picker: ^1.0.1
-  dropdown_button2: ^2.0.2
   flutter:
     sdk: flutter
-    
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  http: ^1.1.0
+  image_picker: ^1.0.1
+  dropdown_button2: ^2.0.2
   cupertino_icons: ^1.0.8
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:

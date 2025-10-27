@@ -34,41 +34,47 @@ class AppHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo + Hamburguesa
+          // Logo + Hamburguesa o Botón de Retroceso
           Row(
             children: [
               // Botón de menú con animación
-              AnimatedScale(
-                duration: const Duration(milliseconds: 300),
-                scale: 1.0,
-                curve: Curves.bounceOut,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: onMenuTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+              if (!showBackButton)
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 300),
+                  scale: onMenuTap != null ? 1.0 : 0.85,
+                  curve: Curves.bounceOut,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: onMenuTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.menu_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
-                    child: const Icon(Icons.menu, color: Colors.white, size: 30),
                   ),
                 ),
-              ),
               const SizedBox(width: 14),
               // Logo con animación de pulso (original colors)
               AnimatedScale(
                 duration: const Duration(milliseconds: 600),
                 scale: 1.0,
                 curve: Curves.easeOutBack,
-                child: Image.asset("assets/header/Logo.png", height: 40),
+                // Asumiendo que tienes un logo en assets/header/Logo.png
+                child: Image.asset("assets/header/Logo.png", height: 40), 
               ),
             ],
           ),
