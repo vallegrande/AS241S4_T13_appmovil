@@ -35,7 +35,7 @@ class DepartmentService {
         throw Exception("Error ${response.statusCode}: ${response.body}");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAllDepartments: $e');
+      if (kDebugMode) print('Error en getAllDepartments: $e');
       rethrow;
     }
   }
@@ -48,8 +48,8 @@ class DepartmentService {
       );
 
       if (kDebugMode) {
-        print('📥 GET Department $id - Status: ${response.statusCode}');
-        print('📥 Response: ${response.body}');
+        print('GET Department $id - Status: ${response.statusCode}');
+        print('Response: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -58,7 +58,7 @@ class DepartmentService {
         throw Exception("Error ${response.statusCode}: ${response.body}");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getDepartmentById: $e');
+      if (kDebugMode) print('Error en getDepartmentById: $e');
       rethrow;
     }
   }
@@ -66,12 +66,12 @@ class DepartmentService {
   Future<void> createDepartment(Department department) async {
     try {
       final body = json.encode(department.toJson());
-      
+
       if (kDebugMode) {
-        print('📤 POST Department');
-        print('📤 URL: $baseUrl');
-        print('📤 Headers: ${_getHeaders()}');
-        print('📤 Body: $body');
+        print('POST Department');
+        print('URL: $baseUrl');
+        print('Headers: ${_getHeaders()}');
+        print('Body: $body');
       }
 
       final response = await http.post(
@@ -81,16 +81,17 @@ class DepartmentService {
       );
 
       if (kDebugMode) {
-        print('📥 Response Status: ${response.statusCode}');
-        print('📥 Response Body: ${response.body}');
+        print('Response Status: ${response.statusCode}');
+        print('Response Body: ${response.body}');
       }
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en createDepartment: $e');
+      if (kDebugMode) print('Error en createDepartment: $e');
       rethrow;
     }
   }
@@ -98,11 +99,11 @@ class DepartmentService {
   Future<void> updateDepartment(Department department) async {
     try {
       final body = json.encode(department.toJson());
-      
+
       if (kDebugMode) {
-        print('📤 PUT Department ${department.id}');
-        print('📤 URL: $baseUrl/${department.id}');
-        print('📤 Body: $body');
+        print('PUT Department ${department.id}');
+        print('URL: $baseUrl/${department.id}');
+        print('Body: $body');
       }
 
       final response = await http.put(
@@ -112,16 +113,17 @@ class DepartmentService {
       );
 
       if (kDebugMode) {
-        print('📥 Response Status: ${response.statusCode}');
-        print('📥 Response Body: ${response.body}');
+        print('Response Status: ${response.statusCode}');
+        print('Response Body: ${response.body}');
       }
 
       if (response.statusCode != 200) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en updateDepartment: $e');
+      if (kDebugMode) print('Error en updateDepartment: $e');
       rethrow;
     }
   }
@@ -134,16 +136,17 @@ class DepartmentService {
       );
 
       if (kDebugMode) {
-        print('📥 DELETE Department $id - Status: ${response.statusCode}');
-        print('📥 Response: ${response.body}');
+        print('DELETE Department $id - Status: ${response.statusCode}');
+        print('Response: ${response.body}');
       }
 
       if (response.statusCode != 200) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en deleteDepartment: $e');
+      if (kDebugMode) print('Error en deleteDepartment: $e');
       rethrow;
     }
   }

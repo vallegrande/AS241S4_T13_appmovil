@@ -8,22 +8,19 @@ import 'package:flutter/foundation.dart' hide Category;
 class CategoryService {
   static final String _baseUrl = '${Environment.apiUrl}/v1/api/categories';
 
-  // Headers con autenticación
   static Map<String, String> _getAuthHeaders({bool isJson = true}) {
     final headers = <String, String>{};
-    
+
     if (AuthService.token != null) {
       headers['Authorization'] = 'Bearer ${AuthService.token}';
     }
-    
+
     if (isJson) {
       headers['Content-Type'] = 'application/json; charset=UTF-8';
     }
-    
     return headers;
   }
 
-  // CREATE - Crear categoría
   static Future<Category> create(Category category) async {
     try {
       final response = await http.post(
@@ -33,7 +30,7 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 CREATE Category - Status: ${response.statusCode}');
+        print('CREATE Category - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -43,15 +40,14 @@ class CategoryService {
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para crear categorías');
       }
-      
+
       throw Exception('Error al crear categoría: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en create: $e');
+      if (kDebugMode) print('Error en create: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener todas las categorías activas
   static Future<List<Category>> getAll() async {
     try {
       final response = await http.get(
@@ -60,24 +56,24 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET Active Categories - Status: ${response.statusCode}');
+        print('GET Active Categories - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> jsonList =
+            jsonDecode(utf8.decode(response.bodyBytes));
         return jsonList.map((json) => Category.fromJson(json)).toList();
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver las categorías');
       }
-      
+
       throw Exception('Error al cargar categorías: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAll: $e');
+      if (kDebugMode) print('Error en getAll: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener TODAS las categorías (incluidas inactivas)
   static Future<List<Category>> getAllWithInactive() async {
     try {
       final response = await http.get(
@@ -86,24 +82,25 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET All Categories - Status: ${response.statusCode}');
+        print('GET All Categories - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> jsonList =
+            jsonDecode(utf8.decode(response.bodyBytes));
         return jsonList.map((json) => Category.fromJson(json)).toList();
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver todas las categorías');
       }
-      
-      throw Exception('Error al cargar todas las categorías: ${response.statusCode}');
+
+      throw Exception(
+          'Error al cargar todas las categorías: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAllWithInactive: $e');
+      if (kDebugMode) print('Error en getAllWithInactive: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener categoría por ID
   static Future<Category> getById(int id) async {
     try {
       final response = await http.get(
@@ -112,7 +109,7 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET Category by ID - Status: ${response.statusCode}');
+        print('GET Category by ID - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -122,15 +119,14 @@ class CategoryService {
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver esta categoría');
       }
-      
+
       throw Exception('Error al cargar categoría: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getById: $e');
+      if (kDebugMode) print('Error en getById: $e');
       rethrow;
     }
   }
 
-  // UPDATE - Actualizar categoría
   static Future<Category> update(int id, Category category) async {
     try {
       final response = await http.put(
@@ -140,7 +136,7 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 UPDATE Category - Status: ${response.statusCode}');
+        print('UPDATE Category - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -152,15 +148,14 @@ class CategoryService {
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para actualizar categorías');
       }
-      
+
       throw Exception('Error al actualizar categoría: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en update: $e');
+      if (kDebugMode) print('Error en update: $e');
       rethrow;
     }
   }
 
-  // STATE - Desactivar categoría (Soft Delete)
   static Future<void> disable(int id) async {
     try {
       final response = await http.patch(
@@ -169,22 +164,22 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 DISABLE Category - Status: ${response.statusCode}');
+        print('DISABLE Category - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200) {
         if (response.statusCode == 403) {
           throw Exception('No tiene permisos para desactivar categorías');
         }
-        throw Exception('Error al desactivar categoría: ${response.statusCode}');
+        throw Exception(
+            'Error al desactivar categoría: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en disable: $e');
+      if (kDebugMode) print('Error en disable: $e');
       rethrow;
     }
   }
 
-  // STATE - Restaurar categoría
   static Future<void> restore(int id) async {
     try {
       final response = await http.patch(
@@ -193,7 +188,7 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 RESTORE Category - Status: ${response.statusCode}');
+        print('RESTORE Category - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200) {
@@ -203,12 +198,11 @@ class CategoryService {
         throw Exception('Error al restaurar categoría: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en restore: $e');
+      if (kDebugMode) print('Error en restore: $e');
       rethrow;
     }
   }
 
-  // DELETE - Eliminar categoría físicamente
   static Future<void> delete(int id) async {
     try {
       final response = await http.delete(
@@ -217,7 +211,7 @@ class CategoryService {
       );
 
       if (kDebugMode) {
-        print('🔵 DELETE Category - Status: ${response.statusCode}');
+        print('DELETE Category - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200 && response.statusCode != 204) {
@@ -227,7 +221,7 @@ class CategoryService {
         throw Exception('Error al eliminar categoría: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en delete: $e');
+      if (kDebugMode) print('Error en delete: $e');
       rethrow;
     }
   }

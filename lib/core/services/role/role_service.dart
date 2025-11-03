@@ -24,8 +24,8 @@ class RoleService {
       );
 
       if (kDebugMode) {
-        print('📥 GET Roles - Status: ${response.statusCode}');
-        print('📥 Response: ${response.body}');
+        print(' GET Roles - Status: ${response.statusCode}');
+        print(' Response: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -35,7 +35,7 @@ class RoleService {
         throw Exception("Error ${response.statusCode}: ${response.body}");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAllRoles: $e');
+      if (kDebugMode) print(' Error en getAllRoles: $e');
       rethrow;
     }
   }
@@ -48,8 +48,8 @@ class RoleService {
       );
 
       if (kDebugMode) {
-        print('📥 GET Role $id - Status: ${response.statusCode}');
-        print('📥 Response: ${response.body}');
+        print(' GET Role $id - Status: ${response.statusCode}');
+        print(' Response: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -58,7 +58,7 @@ class RoleService {
         throw Exception("Error ${response.statusCode}: ${response.body}");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getRoleById: $e');
+      if (kDebugMode) print(' Error en getRoleById: $e');
       rethrow;
     }
   }
@@ -66,12 +66,12 @@ class RoleService {
   Future<void> createRole(Role role) async {
     try {
       final body = json.encode(role.toJson());
-      
+
       if (kDebugMode) {
-        print('📤 POST Role');
-        print('📤 URL: $baseUrl');
-        print('📤 Headers: ${_getHeaders()}');
-        print('📤 Body: $body');
+        print(' POST Role');
+        print(' URL: $baseUrl');
+        print(' Headers: ${_getHeaders()}');
+        print(' Body: $body');
       }
 
       final response = await http.post(
@@ -81,16 +81,17 @@ class RoleService {
       );
 
       if (kDebugMode) {
-        print('📥 Response Status: ${response.statusCode}');
-        print('📥 Response Body: ${response.body}');
+        print(' Response Status: ${response.statusCode}');
+        print(' Response Body: ${response.body}');
       }
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en createRole: $e');
+      if (kDebugMode) print(' Error en createRole: $e');
       rethrow;
     }
   }
@@ -98,11 +99,11 @@ class RoleService {
   Future<void> updateRole(Role role) async {
     try {
       final body = json.encode(role.toJson());
-      
+
       if (kDebugMode) {
-        print('📤 PUT Role ${role.id}');
-        print('📤 URL: $baseUrl/${role.id}');
-        print('📤 Body: $body');
+        print(' PUT Role ${role.id}');
+        print(' URL: $baseUrl/${role.id}');
+        print(' Body: $body');
       }
 
       final response = await http.put(
@@ -112,16 +113,17 @@ class RoleService {
       );
 
       if (kDebugMode) {
-        print('📥 Response Status: ${response.statusCode}');
-        print('📥 Response Body: ${response.body}');
+        print(' Response Status: ${response.statusCode}');
+        print(' Response Body: ${response.body}');
       }
 
       if (response.statusCode != 200) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en updateRole: $e');
+      if (kDebugMode) print(' Error en updateRole: $e');
       rethrow;
     }
   }
@@ -134,16 +136,17 @@ class RoleService {
       );
 
       if (kDebugMode) {
-        print('📥 DELETE Role $id - Status: ${response.statusCode}');
-        print('📥 Response: ${response.body}');
+        print(' DELETE Role $id - Status: ${response.statusCode}');
+        print(' Response: ${response.body}');
       }
 
       if (response.statusCode != 200) {
-        final errorBody = response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
+        final errorBody =
+            response.body.isNotEmpty ? response.body : 'Sin mensaje de error';
         throw Exception("Error ${response.statusCode}: $errorBody");
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en deleteRole: $e');
+      if (kDebugMode) print(' Error en deleteRole: $e');
       rethrow;
     }
   }

@@ -1,3 +1,3 @@
 class Environment {
-  static const String apiUrl = "http://localhost:8080";
+  static const String apiUrl = "https://campitoschicken-be.onrender.com";
 }

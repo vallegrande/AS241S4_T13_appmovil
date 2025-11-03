@@ -13,6 +13,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        
+        // ✨ MODIFICACIÓN 1 para .kts: Usar asignación de Kotlin ✨
+        isCoreLibraryDesugaringEnabled = true 
     }
 
     kotlinOptions {
@@ -41,4 +44,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// ✨ MODIFICACIÓN 2 para .kts: Usar la sintaxis de dependencias con paréntesis ✨
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

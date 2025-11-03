@@ -10,7 +10,6 @@ import 'package:as241s4_t13_appmovil/core/services/auth/auth_service.dart';
 class UserService {
   final String baseUrl = "${Environment.apiUrl}/v1/api/users";
 
-  // Método helper para obtener headers con token
   Map<String, String> _getHeaders() {
     final token = AuthService.token;
     return {
@@ -19,7 +18,6 @@ class UserService {
     };
   }
 
-  // Obtener todos los usuarios
   Future<List<User>> getAllUsers() async {
     final response = await http.get(
       Uri.parse(baseUrl),
@@ -34,7 +32,6 @@ class UserService {
     }
   }
 
-  // Obtener usuario por ID
   Future<User> getUserById(int id) async {
     final response = await http.get(
       Uri.parse('$baseUrl/$id'),
@@ -48,7 +45,6 @@ class UserService {
     }
   }
 
-  // Obtener usuarios por estado (activos/inactivos)
   Future<List<User>> getUsersByState(bool state) async {
     final response = await http.get(
       Uri.parse('$baseUrl/state/$state'),
@@ -59,11 +55,11 @@ class UserService {
       final List<dynamic> data = json.decode(response.body);
       return data.map((item) => User.fromJson(item)).toList();
     } else {
-      throw Exception("Error al obtener usuarios por estado (${response.statusCode})");
+      throw Exception(
+          "Error al obtener usuarios por estado (${response.statusCode})");
     }
   }
 
-  // Crear usuario
   Future<void> createUser(User user) async {
     final response = await http.post(
       Uri.parse(baseUrl),
@@ -76,19 +72,16 @@ class UserService {
     }
   }
 
-  // Actualizar usuario
- Future<void> updateUser(User user) async {
+  Future<void> updateUser(User user) async {
     if (user.idUser == null) {
       throw Exception("El ID del usuario no puede ser nulo para actualizarlo");
     }
 
-    // ⭐ PASO DE DEPURACIÓN: Verifique si el token está presente
     final token = AuthService.token;
     if (kDebugMode) {
-      print('Token usado para PUT: ${token == null ? "NULO/AUSENTE" : "Token presente"}');
+      print(
+          'Token usado para PUT: ${token == null ? "NULO/AUSENTE" : "Token presente"}');
     }
-    // ⭐ FIN DEPASO DE DEPURACIÓN
-    
     final response = await http.put(
       Uri.parse('$baseUrl/${user.idUser}'),
       headers: _getHeaders(),
@@ -96,11 +89,11 @@ class UserService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Error al actualizar el usuario (${response.statusCode})");
+      throw Exception(
+          "Error al actualizar el usuario (${response.statusCode})");
     }
   }
 
-  // Eliminado lógico (desactivar usuario)
   Future<void> deleteUser(int id) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/delete/$id'),
@@ -108,11 +101,11 @@ class UserService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Error al desactivar el usuario (${response.statusCode})");
+      throw Exception(
+          "Error al desactivar el usuario (${response.statusCode})");
     }
   }
 
-  // Restaurar usuario (activar nuevamente)
   Future<void> restoreUser(int id) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/restore/$id'),
@@ -124,7 +117,6 @@ class UserService {
     }
   }
 
-  // Subir foto de perfil (móvil)
   Future<String?> uploadUserPhoto(int userId, File imageFile) async {
     final uri = Uri.parse('$baseUrl/$userId/upload-photo');
     final request = http.MultipartRequest('POST', uri);
@@ -157,7 +149,6 @@ class UserService {
     }
   }
 
-  // Subir foto de perfil (web)
   Future<String?> uploadUserPhotoWeb(int userId, Uint8List imageBytes) async {
     final uri = Uri.parse('$baseUrl/$userId/upload-photo');
     final request = http.MultipartRequest('POST', uri);
@@ -186,19 +177,19 @@ class UserService {
     }
   }
 
-  // Obtener el último ID de usuario creado
   Future<int?> getLatestUserId() async {
     try {
       final users = await getAllUsers();
       if (users.isEmpty) return null;
-      return users.map((u) => u.idUser).reduce((a, b) => (a ?? 0) > (b ?? 0) ? a : b);
+      return users
+          .map((u) => u.idUser)
+          .reduce((a, b) => (a ?? 0) > (b ?? 0) ? a : b);
     } catch (e) {
       if (kDebugMode) print('Error obteniendo último usuario: $e');
       return null;
     }
   }
 
-  // Obtener porcentaje de usuarios activos
   Future<double> getActivePercentage() async {
     final response = await http.get(
       Uri.parse('$baseUrl/active-percentage'),

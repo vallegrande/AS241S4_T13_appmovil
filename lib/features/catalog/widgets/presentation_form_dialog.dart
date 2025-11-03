@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/presentation.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/product.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/ingredient.dart';
@@ -22,7 +25,8 @@ class PresentationFormDialog extends StatefulWidget {
   State<PresentationFormDialog> createState() => _PresentationFormDialogState();
 }
 
-class _PresentationFormDialogState extends State<PresentationFormDialog> with SingleTickerProviderStateMixin {
+class _PresentationFormDialogState extends State<PresentationFormDialog>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -32,21 +36,23 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
   final _promoPriceController = TextEditingController();
   final _preparationTimeController = TextEditingController();
 
-  
   bool _state = true;
   bool _isLoading = false;
   bool _isLoadingData = true;
-  
+
   List<Product> _products = [];
   Product? _selectedProduct;
-  
-  // Para gestionar ingredientes del producto
+
   List<ProductIngredient> _productIngredients = [];
   List<Ingredient> _availableIngredients = [];
   bool _isLoadingIngredients = false;
 
   late TabController _tabController;
   String? _selectedCategoryName;
+
+  final Color primaryOrange = const Color(0xFFFF6B35);
+  final Color lightOrange = const Color(0xFFFF8C42);
+  static const double _inputHeight = 56.0;
 
   @override
   void initState() {
@@ -57,10 +63,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
 
   Future<void> _loadInitialData() async {
     try {
-      // 🔥 Carga los productos con sus presentaciones usando /all
       final products = await ProductService.getAllWithInactive();
 
-      // Intenta cargar ingredientes
       List<Ingredient> ingredients = [];
       try {
         ingredients = await IngredientService.getAll();
@@ -75,85 +79,82 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
         _isLoadingData = false;
       });
 
-      // Si se está editando una presentación
       if (widget.presentation != null) {
         _nameController.text = widget.presentation!.name;
         _descriptionController.text = widget.presentation!.description ?? '';
         _priceController.text = widget.presentation!.price.toString();
-        _deliveryPriceController.text = widget.presentation!.deliveryPrice?.toString() ?? '';
-        _takeoutPriceController.text = widget.presentation!.takeoutPrice?.toString() ?? '';
-        _promoPriceController.text = widget.presentation!.promoPrice?.toString() ?? '';
-        _preparationTimeController.text = widget.presentation!.preparationTime?.toString() ?? '';
+        _deliveryPriceController.text =
+            widget.presentation!.deliveryPrice?.toString() ?? '';
+        _takeoutPriceController.text =
+            widget.presentation!.takeoutPrice?.toString() ?? '';
+        _promoPriceController.text =
+            widget.presentation!.promoPrice?.toString() ?? '';
+        _preparationTimeController.text =
+            widget.presentation!.preparationTime?.toString() ?? '';
         _state = widget.presentation!.state;
 
-        // 🔥 BUSCAR el producto que contiene esta presentación
         final presentationId = widget.presentation!.idPresentation;
-        
+
         if (presentationId != null && _products.isNotEmpty) {
-          // Buscar en qué producto está esta presentación
           for (var product in _products) {
-            if (product.presentations != null && product.presentations!.isNotEmpty) {
-              // Buscar si alguna presentación coincide con el ID
+            if (product.presentations != null &&
+                product.presentations!.isNotEmpty) {
               final found = product.presentations!.any((p) {
                 if (p is Map<String, dynamic>) {
                   return p['idPresentation'] == presentationId;
                 }
                 return false;
               });
-              
+
               if (found) {
                 setState(() {
                   _selectedProduct = product;
                 });
-                
-                // Cargar ingredientes del producto encontrado
+
                 if (product.idProduct != null) {
                   await _loadProductIngredients(product.idProduct!);
-                  
-                  final prodCategoryName = product.category?['name'] ?? 'Sin categoría';
+
+                  final prodCategoryName =
+                      product.category?['name'] ?? 'Sin categoría';
                   setState(() {
                     _selectedCategoryName = prodCategoryName;
                   });
                 }
-                break; // Salir del loop cuando encontremos el producto
+                break;
               }
             }
           }
 
-          // Si no se encontró el producto, mostrar advertencia
           if (_selectedProduct == null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No se pudo encontrar el producto de esta presentación'),
-                backgroundColor: Colors.orange,
-              ),
+            _showSnackBar(
+              'No se pudo encontrar el producto de esta presentación',
+              Colors.orange.shade600,
+              Icons.warning_rounded,
             );
           }
         }
       }
 
-      // Si no hay productos, muestra advertencia
       if (_products.isEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No hay productos disponibles. Registre uno primero.'),
-            backgroundColor: Colors.orange,
-          ),
+        _showSnackBar(
+          'No hay productos disponibles. Registre uno primero.',
+          Colors.orange.shade600,
+          Icons.warning_rounded,
         );
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingData = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar datos: $e')),
-      );
+      _showSnackBar('Error al cargar datos: $e', Colors.red.shade600,
+          Icons.error_rounded);
     }
   }
 
   Future<void> _loadProductIngredients(int productId) async {
     setState(() => _isLoadingIngredients = true);
     try {
-      final ingredients = await ProductIngredientService.getIngredientsByProduct(productId);
+      final ingredients =
+          await ProductIngredientService.getIngredientsByProduct(productId);
       if (!mounted) return;
       setState(() {
         _productIngredients = ingredients;
@@ -162,11 +163,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingIngredients = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar ingredientes: $e')),
-        );
-      }
+      _showSnackBar('Error al cargar ingredientes: $e', Colors.red.shade600,
+          Icons.error_rounded);
     }
   }
 
@@ -187,9 +185,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedProduct == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debe seleccionar un producto')),
-      );
+      _showSnackBar('Debe seleccionar un producto', Colors.orange.shade600,
+          Icons.warning_rounded);
       return;
     }
 
@@ -199,21 +196,21 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
       final presentation = Presentation(
         idPresentation: widget.presentation?.idPresentation,
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty 
-            ? null 
+        description: _descriptionController.text.trim().isEmpty
+            ? null
             : _descriptionController.text.trim(),
         price: double.parse(_priceController.text),
-        deliveryPrice: _deliveryPriceController.text.isEmpty 
-            ? null 
+        deliveryPrice: _deliveryPriceController.text.isEmpty
+            ? null
             : double.tryParse(_deliveryPriceController.text),
-        takeoutPrice: _takeoutPriceController.text.isEmpty 
-            ? null 
+        takeoutPrice: _takeoutPriceController.text.isEmpty
+            ? null
             : double.tryParse(_takeoutPriceController.text),
-        promoPrice: _promoPriceController.text.isEmpty 
-            ? null 
+        promoPrice: _promoPriceController.text.isEmpty
+            ? null
             : double.tryParse(_promoPriceController.text),
-        preparationTime: _preparationTimeController.text.isEmpty 
-            ? null 
+        preparationTime: _preparationTimeController.text.isEmpty
+            ? null
             : int.tryParse(_preparationTimeController.text),
         state: _state,
         product: {'idProduct': _selectedProduct!.idProduct},
@@ -222,7 +219,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
       if (widget.presentation == null) {
         await PresentationService.create(presentation);
       } else {
-        await PresentationService.update(widget.presentation!.idPresentation!, presentation);
+        await PresentationService.update(
+            widget.presentation!.idPresentation!, presentation);
       }
 
       if (mounted) {
@@ -230,29 +228,55 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
         WidgetsBinding.instance.addPostFrameCallback((_) {
           widget.onSaved();
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.presentation == null ? 'Presentación creada' : 'Presentación actualizada'),
-            backgroundColor: Colors.green,
-          ),
+
+        _showSnackBar(
+          widget.presentation == null
+              ? 'Presentación creada exitosamente'
+              : 'Presentación actualizada exitosamente',
+          Colors.green.shade600,
+          Icons.check_circle_rounded,
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Error: $e', Colors.red.shade600, Icons.error_rounded);
       }
     }
   }
 
+  void _showSnackBar(String message, Color color, IconData icon) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+        elevation: 6,
+      ),
+    );
+  }
+
   void _showAddIngredientDialog() {
     if (_selectedProduct == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleccione un producto primero')),
-      );
+      _showSnackBar('Seleccione un producto primero', Colors.orange.shade600,
+          Icons.warning_rounded);
       return;
     }
 
@@ -264,28 +288,90 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Añadir Ingrediente'),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primaryOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.add_circle_rounded,
+                    color: primaryOrange, size: 24),
+              ),
+              const SizedBox(width: 16),
+              // FIX del desbordamiento anterior
+              Expanded(
+                child: Text(
+                  'Añadir Ingrediente',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: const Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<Ingredient>(
                   value: selectedIngredient,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Ingrediente *',
-                    border: OutlineInputBorder(),
+                    labelStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A1A2E),
+                    ),
+                    prefixIcon: Container(
+                      width: 40,
+                      height: 40,
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.restaurant_rounded,
+                          color: primaryOrange, size: 18),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: primaryOrange, width: 2),
+                    ),
                   ),
                   items: _availableIngredients.map((ingredient) {
                     final isAlreadyAdded = _productIngredients.any(
-                      (pi) => pi.id.idIngredient == ingredient.idIngredient
-                    );
+                        (pi) => pi.id.idIngredient == ingredient.idIngredient);
                     return DropdownMenuItem(
                       value: ingredient,
                       enabled: !isAlreadyAdded,
                       child: Text(
                         ingredient.name,
-                        style: TextStyle(
-                          color: isAlreadyAdded ? Colors.grey : null,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isAlreadyAdded
+                              ? Colors.grey.shade400
+                              : const Color(0xFF1A1A2E),
                         ),
                       ),
                     );
@@ -300,53 +386,149 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                   },
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                TextFormField(
                   controller: quantityController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1A1A2E),
+                  ),
+                  decoration: InputDecoration(
                     labelText: 'Cantidad *',
-                    border: OutlineInputBorder(),
                     hintText: '0.0',
+                    labelStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A1A2E),
+                    ),
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                    prefixIcon: Container(
+                      width: 40,
+                      height: 40,
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.inventory_2_rounded,
+                          color: primaryOrange, size: 18),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: primaryOrange, width: 2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                TextFormField(
                   controller: unitController,
-                  decoration: const InputDecoration(
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1A1A2E),
+                  ),
+                  decoration: InputDecoration(
                     labelText: 'Unidad *',
-                    border: OutlineInputBorder(),
                     hintText: 'kg, unidad, litro, etc.',
+                    labelStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A1A2E),
+                    ),
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                    prefixIcon: Container(
+                      width: 40,
+                      height: 40,
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryOrange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.straighten_rounded,
+                          color: primaryOrange, size: 18),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: primaryOrange, width: 2),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          actionsAlignment: MainAxisAlignment.end,
+          actionsPadding:
+              const EdgeInsets.only(right: 16, bottom: 16, left: 16),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                    fontSize: 15),
+              ),
             ),
+            const SizedBox(width: 8),
             ElevatedButton(
               onPressed: () async {
                 if (selectedIngredient == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Seleccione un ingrediente')),
-                  );
+                  _showSnackBar('Seleccione un ingrediente',
+                      Colors.orange.shade600, Icons.warning_rounded);
                   return;
                 }
-                
+
                 final quantity = double.tryParse(quantityController.text);
                 if (quantity == null || quantity <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ingrese una cantidad válida')),
-                  );
+                  _showSnackBar('Ingrese una cantidad válida',
+                      Colors.orange.shade600, Icons.warning_rounded);
                   return;
                 }
 
                 if (unitController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ingrese una unidad')),
-                  );
+                  _showSnackBar('Ingrese una unidad', Colors.orange.shade600,
+                      Icons.warning_rounded);
                   return;
                 }
 
@@ -361,85 +543,199 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                   );
 
                   await ProductIngredientService.create(productIngredient);
-                  
+
                   if (mounted) {
                     Navigator.pop(context);
                     await _loadProductIngredients(_selectedProduct!.idProduct!);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Ingrediente añadido correctamente'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    _showSnackBar('Ingrediente añadido correctamente',
+                        Colors.green.shade600, Icons.check_circle_rounded);
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al añadir ingrediente: $e')),
-                    );
+                    _showSnackBar('Error al añadir ingrediente: $e',
+                        Colors.red.shade600, Icons.error_rounded);
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF1100),
+                backgroundColor: primaryOrange,
                 foregroundColor: Colors.white,
+                elevation: 2,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Añadir'),
+              child: Text('Añadir',
+                  style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
             ),
           ],
-        ),
+        ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack).fade(),
       ),
     );
   }
 
   void _showEditIngredientDialog(ProductIngredient pi) {
-    final quantityController = TextEditingController(text: pi.quantity.toString());
+    final quantityController =
+        TextEditingController(text: pi.quantity.toString());
     final unitController = TextEditingController(text: pi.unit ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Editar ${_getIngredientName(pi)}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        title: Row(
           children: [
-            TextField(
-              controller: quantityController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Cantidad *',
-                border: OutlineInputBorder(),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primaryOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Icon(Icons.edit_rounded, color: primaryOrange, size: 24),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: unitController,
-              decoration: const InputDecoration(
-                labelText: 'Unidad *',
-                border: OutlineInputBorder(),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Editar ${_getIngredientName(pi)}',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  color: const Color(0xFF1A1A2E),
+                ),
               ),
             ),
           ],
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: quantityController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1A1A2E),
+              ),
+              decoration: InputDecoration(
+                labelText: 'Cantidad *',
+                labelStyle: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1A1A2E),
+                ),
+                prefixIcon: Container(
+                  width: 40,
+                  height: 40,
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.inventory_2_rounded,
+                      color: primaryOrange, size: 18),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryOrange, width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: unitController,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1A1A2E),
+              ),
+              decoration: InputDecoration(
+                labelText: 'Unidad *',
+                labelStyle: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1A1A2E),
+                ),
+                prefixIcon: Container(
+                  width: 40,
+                  height: 40,
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.straighten_rounded,
+                      color: primaryOrange, size: 18),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.grey.shade200, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryOrange, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, left: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                  fontSize: 15),
+            ),
           ),
+          const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () async {
               final quantity = double.tryParse(quantityController.text);
               if (quantity == null || quantity <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ingrese una cantidad válida')),
-                );
+                _showSnackBar('Ingrese una cantidad válida',
+                    Colors.orange.shade600, Icons.warning_rounded);
                 return;
               }
 
               if (unitController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ingrese una unidad')),
-                );
+                _showSnackBar('Ingrese una unidad', Colors.orange.shade600,
+                    Icons.warning_rounded);
                 return;
               }
 
@@ -456,33 +752,34 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                 );
 
                 await ProductIngredientService.create(updatedPI);
-                
+
                 if (mounted) {
                   Navigator.pop(context);
                   await _loadProductIngredients(_selectedProduct!.idProduct!);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ingrediente actualizado correctamente'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                  _showSnackBar('Ingrediente actualizado correctamente',
+                      Colors.green.shade600, Icons.check_circle_rounded);
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error al actualizar: $e')),
-                  );
+                  _showSnackBar('Error al actualizar: $e', Colors.red.shade600,
+                      Icons.error_rounded);
                 }
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF1100),
+              backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Actualizar'),
+            child: Text('Actualizar',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700, fontSize: 15)),
           ),
         ],
-      ),
+      ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack).fade(),
     );
   }
 
@@ -490,20 +787,72 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: Text('¿Está seguro de eliminar "${_getIngredientName(pi)}" del producto?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.delete_rounded,
+                  color: Colors.red.shade600, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Confirmar eliminación',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  color: const Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Está seguro de eliminar "${_getIngredientName(pi)}" del producto?',
+          style: GoogleFonts.inter(
+              fontSize: 15, color: Colors.grey.shade700, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, left: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                  fontSize: 15),
+            ),
           ),
-          TextButton(
+          const SizedBox(width: 8),
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Eliminar',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700, fontSize: 15)),
           ),
         ],
-      ),
+      ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack).fade(),
     );
 
     if (confirmed == true) {
@@ -512,21 +861,16 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
           pi.id.idProduct,
           pi.id.idIngredient,
         );
-        
+
         if (mounted) {
           await _loadProductIngredients(_selectedProduct!.idProduct!);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ingrediente eliminado correctamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showSnackBar('Ingrediente eliminado correctamente',
+              Colors.green.shade600, Icons.check_circle_rounded);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al eliminar: $e')),
-          );
+          _showSnackBar('Error al eliminar: $e', Colors.red.shade600,
+              Icons.error_rounded);
         }
       }
     }
@@ -542,10 +886,12 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.white,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 750),
+        // ⭐ FIX 1: Aumento del tamaño del modal (de 700 a 800)
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 750),
         child: _isLoadingData
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -556,8 +902,12 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      border: Border(
+                        bottom:
+                            BorderSide(color: Colors.grey.shade200, width: 1),
                       ),
                     ),
                     child: Row(
@@ -565,14 +915,25 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF1100).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                primaryOrange.withOpacity(0.2),
+                                primaryOrange.withOpacity(0.1),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryOrange.withOpacity(0.2),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.style,
-                            color: Color(0xFFFF1100),
-                            size: 28,
-                          ),
+                          child: Icon(Icons.style_rounded,
+                              color: primaryOrange, size: 28),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -580,27 +941,44 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.presentation == null ? 'Nueva Presentación' : 'Editar Presentación',
-                                style: const TextStyle(
+                                widget.presentation == null
+                                    ? 'Nueva Presentación'
+                                    : 'Editar Presentación',
+                                style: GoogleFonts.poppins(
                                   fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2D3748),
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1A1A2E),
+                                  letterSpacing: -0.5,
                                 ),
                               ),
-                              const Text(
-                                'Complete la información',
-                                style: TextStyle(fontSize: 14, color: Color(0xFF718096)),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Complete la información requerida',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close),
+                          icon: Icon(Icons.close_rounded,
+                              color: Colors.grey.shade600),
                           onPressed: () => Navigator.pop(context),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.shade100,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 300.ms)
+                      .slideY(begin: -0.2, end: 0),
 
                   // TabBar
                   Container(
@@ -612,16 +990,25 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                     ),
                     child: TabBar(
                       controller: _tabController,
-                      indicatorColor: const Color(0xFFFF1100),
-                      labelColor: const Color(0xFFFF1100),
-                      unselectedLabelColor: const Color(0xFF718096),
+                      indicatorColor: primaryOrange,
+                      labelColor: primaryOrange,
+                      unselectedLabelColor: Colors.grey.shade600,
+                      labelStyle: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      unselectedLabelStyle: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
                       tabs: const [
                         Tab(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.info_outline, size: 18),
-                              SizedBox(width: 8),
+                              // ⭐ FIX 2: Reducción de espaciado para evitar overflow
+                              const SizedBox(width: 4),
                               Text('Información'),
                             ],
                           ),
@@ -631,7 +1018,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.kitchen, size: 18),
-                              SizedBox(width: 8),
+                              // ⭐ FIX 2: Reducción de espaciado para evitar overflow
+                              const SizedBox(width: 4),
                               Text('Ingredientes'),
                             ],
                           ),
@@ -641,7 +1029,8 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.add_circle_outline, size: 18),
-                              SizedBox(width: 8),
+                              // ⭐ FIX 2: Reducción de espaciado para evitar overflow
+                              const SizedBox(width: 4),
                               Text('Gestionar'),
                             ],
                           ),
@@ -668,34 +1057,52 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border(
-                        top: BorderSide(color: Colors.grey.shade200),
+                        top: BorderSide(color: Colors.grey.shade200, width: 1),
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
                       ),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: _isLoading ? null : () => Navigator.pop(context),
+                            onPressed: _isLoading
+                                ? null
+                                : () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              side: BorderSide(
+                                  color: Colors.grey.shade300, width: 1.5),
                             ),
-                            child: const Text('Cancelar'),
+                            child: Text(
+                              'Cancelar',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
+                          flex: 2,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _savePresentation,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF1100),
+                              backgroundColor: primaryOrange,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              elevation: 0,
+                              shadowColor: primaryOrange.withOpacity(0.3),
                             ),
                             child: _isLoading
                                 ? const SizedBox(
@@ -703,10 +1110,26 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                                     height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
                                     ),
                                   )
-                                : Text(widget.presentation == null ? 'Crear' : 'Actualizar'),
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.check_rounded, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        widget.presentation == null
+                                            ? 'Crear Presentación'
+                                            : 'Actualizar',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
                       ],
@@ -714,6 +1137,119 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                   ),
                 ],
               ),
+      ),
+    ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack);
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool required = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1A1A2E),
+              ),
+            ),
+            if (required) ...[
+              const SizedBox(width: 4),
+              Text(
+                '*',
+                style: TextStyle(
+                  color: primaryOrange,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: _inputHeight,
+          child: TextFormField(
+            controller: controller,
+            maxLines: 1,
+            keyboardType: keyboardType,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1A1A2E),
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey.shade400,
+              ),
+              prefixIcon: Container(
+                width: 40,
+                height: 40,
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: primaryOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: primaryOrange, size: 18),
+              ),
+              prefixIconConstraints:
+                  const BoxConstraints(minWidth: 56, minHeight: 56),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: primaryOrange, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+            ),
+            validator: validator,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 8),
+      child: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF1A1A2E),
+        ),
       ),
     );
   }
@@ -726,42 +1262,121 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<Product>(
-              value: _selectedProduct,
-              isDense: true,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Producto *',
-                prefixIcon: const Icon(Icons.fastfood, color: Color(0xFFFF1100)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            _buildSectionTitle('Información Básica'),
+            SizedBox(
+              height: _inputHeight,
+              child: DropdownButtonFormField2<Product>(
+                value: _selectedProduct,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Selecciona un producto',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.grey.shade400,
+                  ),
+                  prefixIcon: Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: primaryOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.fastfood_rounded,
+                        color: primaryOrange, size: 18),
+                  ),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 56, minHeight: 56),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.grey.shade200, width: 1.5),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: primaryOrange, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                ),
+                items: _products.map((product) {
+                  return DropdownMenuItem(
+                    value: product,
+                    child: Text(
+                      product.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() => _selectedProduct = value);
+                  if (value != null && value.idProduct != null) {
+                    _loadProductIngredients(value.idProduct!);
+                  }
+                },
+                validator: (value) {
+                  if (value == null) return 'Debe seleccionar un producto';
+                  return null;
+                },
+                buttonStyleData: ButtonStyleData(
+                  height: _inputHeight,
+                  padding: const EdgeInsets.only(right: 12),
+                ),
+                dropdownStyleData: DropdownStyleData(
+                  maxHeight: 300,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  offset: const Offset(0, -4),
+                ),
+                menuItemStyleData: MenuItemStyleData(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                iconStyleData: IconStyleData(
+                  icon: const Icon(Icons.expand_more_rounded),
+                  iconSize: 22,
+                  iconEnabledColor: Colors.grey.shade600,
+                ),
               ),
-              items: _products.map((product) {
-                return DropdownMenuItem(
-                  value: product,
-                  child: Text(product.name),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() => _selectedProduct = value);
-                if (value != null && value.idProduct != null) {
-                  _loadProductIngredients(value.idProduct!);
-                }
-              },
-              validator: (value) {
-                if (value == null) return 'Debe seleccionar un producto';
-                return null;
-              },
             ),
-            const SizedBox(height: 16),
-
-            TextFormField(
+            const SizedBox(height: 12),
+            _buildTextField(
               controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Nombre *',
-                hintText: 'Ej: Personal, Familiar, 1/4 de pollo',
-                prefixIcon: const Icon(Icons.label, color: Color(0xFFFF1100)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+              label: 'Nombre',
+              hint: 'Ej: Personal, Familiar, 1/4 de pollo',
+              icon: Icons.label_rounded,
+              required: true,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'El nombre es obligatorio';
@@ -769,39 +1384,24 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                 return null;
               },
             ),
-            const SizedBox(height: 16),
-
-            TextFormField(
+            const SizedBox(height: 12),
+            _buildTextField(
               controller: _descriptionController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Descripción',
-                hintText: 'Descripción de la presentación',
-                prefixIcon: const Icon(Icons.description, color: Color(0xFFFF1100)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+              label: 'Descripción',
+              hint: 'Descripción de la presentación',
+              icon: Icons.description_rounded,
             ),
             const SizedBox(height: 20),
 
-            Text(
-              'Precios',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            TextFormField(
+            _buildSectionTitle('Precios'),
+            _buildTextField(
               controller: _priceController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Precio Base *',
-                hintText: '0.00',
-                prefixIcon: const Icon(Icons.attach_money, color: Color(0xFFFF1100)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+              label: 'Precio Base',
+              hint: '0.00',
+              icon: Icons.attach_money_rounded,
+              required: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'El precio es obligatorio';
@@ -813,21 +1413,20 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
               },
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: _buildTextField(
                     controller: _deliveryPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Delivery',
-                      hintText: '0.00',
-                      prefixIcon: const Icon(Icons.delivery_dining, color: Color(0xFFFF1100)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    label: 'Delivery',
+                    hint: '0.00',
+                    icon: Icons.delivery_dining_rounded,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     validator: (value) {
-                      if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          double.tryParse(value) == null) {
                         return 'Precio inválido';
                       }
                       return null;
@@ -836,17 +1435,17 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: _buildTextField(
                     controller: _takeoutPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Para Llevar',
-                      hintText: '0.00',
-                      prefixIcon: const Icon(Icons.shopping_bag, color: Color(0xFFFF1100)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    label: 'Para Llevar',
+                    hint: '0.00',
+                    icon: Icons.shopping_bag_rounded,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     validator: (value) {
-                      if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          double.tryParse(value) == null) {
                         return 'Precio inválido';
                       }
                       return null;
@@ -856,21 +1455,20 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: _buildTextField(
                     controller: _promoPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Promoción',
-                      hintText: '0.00',
-                      prefixIcon: const Icon(Icons.local_offer, color: Colors.orange),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    label: 'Promoción',
+                    hint: '0.00',
+                    icon: Icons.local_offer_rounded,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     validator: (value) {
-                      if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          double.tryParse(value) == null) {
                         return 'Precio inválido';
                       }
                       return null;
@@ -879,17 +1477,16 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: _buildTextField(
                     controller: _preparationTimeController,
+                    label: 'Tiempo (min)',
+                    hint: '0',
+                    icon: Icons.timer_rounded,
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Tiempo (min)',
-                      hintText: '0',
-                      prefixIcon: const Icon(Icons.timer, color: Color(0xFFFF1100)),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                     validator: (value) {
-                      if (value != null && value.isNotEmpty && int.tryParse(value) == null) {
+                      if (value != null &&
+                          value.isNotEmpty &&
+                          int.tryParse(value) == null) {
                         return 'Tiempo inválido';
                       }
                       return null;
@@ -901,21 +1498,61 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
             const SizedBox(height: 20),
 
             // Estado
-            Row(
-              children: [
-                const Icon(Icons.toggle_on, color: Color(0xFFFF1100)),
-                const SizedBox(width: 12),
-                const Text(
-                  'Estado',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                const Spacer(),
-                Switch(
-                  value: _state,
-                  onChanged: (value) => setState(() => _state = value),
-                  activeColor: const Color(0xFFFF1100),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _state
+                          ? primaryOrange.withOpacity(0.1)
+                          : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.toggle_on_rounded,
+                      color: _state ? primaryOrange : Colors.grey.shade500,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Estado de la Presentación',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1A1A2E),
+                          ),
+                        ),
+                        Text(
+                          _state ? 'Activa' : 'Inactiva',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _state,
+                    onChanged: (value) => setState(() => _state = value),
+                    activeColor: primaryOrange,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -925,20 +1562,54 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
 
   Widget _buildIngredientsTab() {
     if (_selectedProduct == null) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Seleccione un producto en la pestaña "Información" para ver sus ingredientes',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF718096)),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.kitchen_outlined,
+                    size: 64, color: Colors.grey.shade300),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Seleccione un producto',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Vaya a la pestaña "Información" para\nseleccionar un producto',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: Colors.grey.shade500),
+              ),
+            ],
           ),
         ),
-      );
+      )
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .scale(duration: 400.ms, curve: Curves.easeOutBack);
     }
 
     if (_isLoadingIngredients) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+          child:
+              CircularProgressIndicator(color: primaryOrange, strokeWidth: 3));
     }
 
     if (_productIngredients.isEmpty) {
@@ -948,31 +1619,42 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.kitchen_outlined,
-                size: 64,
-                color: Colors.grey.shade400,
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.kitchen_outlined,
+                    size: 64, color: Colors.grey.shade300),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
-                'No hay ingredientes registrados',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade600,
+                'Sin ingredientes',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Añade ingredientes en la pestaña "Gestionar"',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade500,
-                ),
+                'Este producto no tiene ingredientes.\nAgréguelos en la pestaña "Gestionar"',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: Colors.grey.shade500),
               ),
             ],
           ),
         ),
-      );
+      )
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .scale(duration: 400.ms, curve: Curves.easeOutBack);
     }
 
     return ListView.builder(
@@ -980,41 +1662,120 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
       itemCount: _productIngredients.length,
       itemBuilder: (context, index) {
         final pi = _productIngredients[index];
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFFFF1100).withOpacity(0.1),
-              child: const Icon(Icons.restaurant, color: Color(0xFFFF1100)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primaryOrange.withOpacity(0.2),
+                    primaryOrange.withOpacity(0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.restaurant_rounded,
+                  color: primaryOrange, size: 24),
             ),
             title: Text(
               _getIngredientName(pi),
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: const Color(0xFF1A1A2E),
+              ),
             ),
-            subtitle: Text('${pi.quantity} ${pi.unit ?? ''}'),
-            trailing: const Icon(Icons.check_circle, color: Colors.green),
+            subtitle: Text(
+              '${pi.quantity} ${pi.unit ?? ''}',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.check_circle_rounded,
+                  color: Colors.green.shade600, size: 20),
+            ),
           ),
-        );
+        ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0);
       },
     );
   }
 
   Widget _buildManageIngredientsTab() {
     if (_selectedProduct == null) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Seleccione un producto en la pestaña "Información" para gestionar ingredientes',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF718096)),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.kitchen_outlined,
+                    size: 64, color: Colors.grey.shade300),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Seleccione un producto',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Vaya a la pestaña "Información" para\nseleccionar un producto',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: Colors.grey.shade500),
+              ),
+            ],
           ),
         ),
-      );
+      )
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .scale(duration: 400.ms, curve: Curves.easeOutBack);
     }
 
     if (_isLoadingIngredients) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+          child:
+              CircularProgressIndicator(color: primaryOrange, strokeWidth: 3));
     }
 
     return Column(
@@ -1022,17 +1783,31 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
         // Botón añadir
         Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+            ),
+          ),
           child: ElevatedButton.icon(
             onPressed: _showAddIngredientDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Añadir Ingrediente'),
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: Text(
+              'Añadir Ingrediente',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF1100),
+              backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 48),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 0,
+              shadowColor: primaryOrange.withOpacity(0.3),
             ),
           ),
         ),
@@ -1044,54 +1819,139 @@ class _PresentationFormDialogState extends State<PresentationFormDialog> with Si
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.kitchen_outlined,
-                        size: 64,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No hay ingredientes',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey.shade600,
+                      Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.grey.shade50, Colors.grey.shade100],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
                         ),
+                        child: Icon(Icons.kitchen_outlined,
+                            size: 64, color: Colors.grey.shade300),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Sin ingredientes',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Presione el botón de arriba para\nañadir ingredientes',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                            fontSize: 14, color: Colors.grey.shade500),
                       ),
                     ],
                   ),
                 )
+                  .animate()
+                  .fadeIn(duration: 400.ms)
+                  .scale(duration: 400.ms, curve: Curves.easeOutBack)
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(16),
                   itemCount: _productIngredients.length,
                   itemBuilder: (context, index) {
                     final pi = _productIngredients[index];
-                    return Card(
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border:
+                            Border.all(color: Colors.grey.shade100, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFFFF1100).withOpacity(0.1),
-                          child: const Icon(Icons.restaurant, color: Color(0xFFFF1100)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                primaryOrange.withOpacity(0.2),
+                                primaryOrange.withOpacity(0.1),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.restaurant_rounded,
+                              color: primaryOrange, size: 24),
                         ),
                         title: Text(
                           _getIngredientName(pi),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: const Color(0xFF1A1A2E),
+                          ),
                         ),
-                        subtitle: Text('${pi.quantity} ${pi.unit ?? ''}'),
+                        subtitle: Text(
+                          '${pi.quantity} ${pi.unit ?? ''}',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Color(0xFFFF1100)),
-                              onPressed: () => _showEditIngredientDialog(pi),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: primaryOrange.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.edit_rounded,
+                                    color: primaryOrange, size: 20),
+                                onPressed: () => _showEditIngredientDialog(pi),
+                                tooltip: 'Editar',
+                                // FIX del 0.199px overflow anterior
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 40, minHeight: 40),
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteIngredient(pi),
+                            const SizedBox(width: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.delete_rounded,
+                                    color: Colors.red.shade600, size: 20),
+                                onPressed: () => _deleteIngredient(pi),
+                                tooltip: 'Eliminar',
+                                // FIX del 0.199px overflow anterior
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 40, minHeight: 40),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    );
+                    )
+                        .animate()
+                        .fadeIn(duration: 300.ms)
+                        .slideX(begin: 0.1, end: 0);
                   },
                 ),
         ),

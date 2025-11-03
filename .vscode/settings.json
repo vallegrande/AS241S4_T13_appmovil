@@ -3,5 +3,6 @@
         "lib/auth",
         "lib/Dishes",
         "lib"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

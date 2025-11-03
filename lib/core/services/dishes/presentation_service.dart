@@ -8,22 +8,20 @@ import 'package:flutter/foundation.dart';
 class PresentationService {
   static final String _baseUrl = '${Environment.apiUrl}/v1/api/presentations';
 
-  // Headers con autenticación
   static Map<String, String> _getAuthHeaders({bool isJson = true}) {
     final headers = <String, String>{};
-    
+
     if (AuthService.token != null) {
       headers['Authorization'] = 'Bearer ${AuthService.token}';
     }
-    
+
     if (isJson) {
       headers['Content-Type'] = 'application/json; charset=UTF-8';
     }
-    
+
     return headers;
   }
 
-  // CREATE - Crear presentación
   static Future<Presentation> create(Presentation presentation) async {
     try {
       final response = await http.post(
@@ -33,23 +31,23 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 CREATE Presentation - Status: ${response.statusCode}');
+        print('CREATE Presentation - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return Presentation.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        return Presentation.fromJson(
+            jsonDecode(utf8.decode(response.bodyBytes)));
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para crear presentaciones');
       }
-      
+
       throw Exception('Error al crear presentación: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en create: $e');
+      if (kDebugMode) print('Error en create: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener todas las presentaciones activas
   static Future<List<Presentation>> getAll() async {
     try {
       final response = await http.get(
@@ -58,24 +56,24 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET Active Presentations - Status: ${response.statusCode}');
+        print('GET Active Presentations - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> jsonList =
+            jsonDecode(utf8.decode(response.bodyBytes));
         return jsonList.map((json) => Presentation.fromJson(json)).toList();
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver las presentaciones');
       }
-      
+
       throw Exception('Error al cargar presentaciones: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAll: $e');
+      if (kDebugMode) print('Error en getAll: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener TODAS las presentaciones (incluidas inactivas)
   static Future<List<Presentation>> getAllWithInactive() async {
     try {
       final response = await http.get(
@@ -84,24 +82,25 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET All Presentations - Status: ${response.statusCode}');
+        print('GET All Presentations - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> jsonList =
+            jsonDecode(utf8.decode(response.bodyBytes));
         return jsonList.map((json) => Presentation.fromJson(json)).toList();
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver todas las presentaciones');
       }
-      
-      throw Exception('Error al cargar todas las presentaciones: ${response.statusCode}');
+
+      throw Exception(
+          'Error al cargar todas las presentaciones: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getAllWithInactive: $e');
+      if (kDebugMode) print('Error en getAllWithInactive: $e');
       rethrow;
     }
   }
 
-  // READ - Obtener presentación por ID
   static Future<Presentation> getById(int id) async {
     try {
       final response = await http.get(
@@ -110,25 +109,25 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 GET Presentation by ID - Status: ${response.statusCode}');
+        print('GET Presentation by ID - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        return Presentation.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        return Presentation.fromJson(
+            jsonDecode(utf8.decode(response.bodyBytes)));
       } else if (response.statusCode == 404) {
         throw NotFoundException('Presentación no encontrada');
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para ver esta presentación');
       }
-      
+
       throw Exception('Error al cargar presentación: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en getById: $e');
+      if (kDebugMode) print('Error en getById: $e');
       rethrow;
     }
   }
 
-  // UPDATE - Actualizar presentación
   static Future<Presentation> update(int id, Presentation presentation) async {
     try {
       final response = await http.put(
@@ -138,25 +137,26 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 UPDATE Presentation - Status: ${response.statusCode}');
+        print('UPDATE Presentation - Status: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
-        return Presentation.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+        return Presentation.fromJson(
+            jsonDecode(utf8.decode(response.bodyBytes)));
       } else if (response.statusCode == 404) {
         throw NotFoundException('Presentación no encontrada');
       } else if (response.statusCode == 403) {
         throw Exception('No tiene permisos para actualizar presentaciones');
       }
-      
-      throw Exception('Error al actualizar presentación: ${response.statusCode}');
+
+      throw Exception(
+          'Error al actualizar presentación: ${response.statusCode}');
     } catch (e) {
-      if (kDebugMode) print('❌ Error en update: $e');
+      if (kDebugMode) print('Error en update: $e');
       rethrow;
     }
   }
 
-  // STATE - Desactivar presentación (Soft Delete)
   static Future<void> disable(int id) async {
     try {
       final response = await http.put(
@@ -165,22 +165,22 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 DISABLE Presentation - Status: ${response.statusCode}');
+        print('DISABLE Presentation - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200) {
         if (response.statusCode == 403) {
           throw Exception('No tiene permisos para desactivar presentaciones');
         }
-        throw Exception('Error al desactivar presentación: ${response.statusCode}');
+        throw Exception(
+            'Error al desactivar presentación: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en disable: $e');
+      if (kDebugMode) print('Error en disable: $e');
       rethrow;
     }
   }
 
-  // STATE - Restaurar presentación
   static Future<void> restore(int id) async {
     try {
       final response = await http.put(
@@ -189,22 +189,22 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 RESTORE Presentation - Status: ${response.statusCode}');
+        print('RESTORE Presentation - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200) {
         if (response.statusCode == 403) {
           throw Exception('No tiene permisos para restaurar presentaciones');
         }
-        throw Exception('Error al restaurar presentación: ${response.statusCode}');
+        throw Exception(
+            'Error al restaurar presentación: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en restore: $e');
+      if (kDebugMode) print('Error en restore: $e');
       rethrow;
     }
   }
 
-  // DELETE - Eliminar presentación físicamente
   static Future<void> delete(int id) async {
     try {
       final response = await http.delete(
@@ -213,17 +213,18 @@ class PresentationService {
       );
 
       if (kDebugMode) {
-        print('🔵 DELETE Presentation - Status: ${response.statusCode}');
+        print('DELETE Presentation - Status: ${response.statusCode}');
       }
 
       if (response.statusCode != 200 && response.statusCode != 204) {
         if (response.statusCode == 403) {
           throw Exception('No tiene permisos para eliminar presentaciones');
         }
-        throw Exception('Error al eliminar presentación: ${response.statusCode}');
+        throw Exception(
+            'Error al eliminar presentación: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('❌ Error en delete: $e');
+      if (kDebugMode) print('Error en delete: $e');
       rethrow;
     }
   }

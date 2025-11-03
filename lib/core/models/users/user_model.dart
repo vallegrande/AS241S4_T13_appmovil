@@ -56,7 +56,9 @@ class User {
       surnames: json['surnames'] ?? '',
       email: json['email'] ?? '',
       password: json['password'],
-      role: json['role'] != null ? Role.fromJson(json['role']) : Role(id: 0, name: ''),
+      role: json['role'] != null
+          ? Role.fromJson(json['role'])
+          : Role(id: 0, name: ''),
       department: json['department'] != null
           ? Department.fromJson(json['department'])
           : Department(id: 0, name: ''),
@@ -91,28 +93,22 @@ class User {
       'department': {'id': department.id},
     };
 
-    // Solo incluir idUser si existe (para editar)
     if (idUser != null) {
       data['idUser'] = idUser;
     }
 
-    // ⭐ CORRECCIÓN: Incluir password si no es null. Si se editó y el campo estaba vacío,
-    // el valor será "", lo que evita el error del backend que requiere el campo.
-    if (password != null) { 
+    if (password != null) {
       data['password'] = password;
     }
 
-    // Campos opcionales
     if (phone != null && phone!.isNotEmpty) data['phone'] = phone;
     if (adress != null && adress!.isNotEmpty) data['adress'] = adress;
     if (gender != null && gender!.isNotEmpty) data['gender'] = gender;
     if (profilePhoto != null) data['profilePhoto'] = profilePhoto;
     if (state != null) data['state'] = state;
-    
-    // ⭐ CORRECCIÓN: Se elimina el campo registrationDate del body del PUT.
-    // if (registrationDate != null) data['registrationDate'] = registrationDate!.toIso8601String(); 
-    
-    if (horaInicio != null && horaInicio!.isNotEmpty) data['horaInicio'] = horaInicio;
+
+    if (horaInicio != null && horaInicio!.isNotEmpty)
+      data['horaInicio'] = horaInicio;
     if (horaFin != null && horaFin!.isNotEmpty) data['horaFin'] = horaFin;
     if (plannedHours != null) data['plannedHours'] = plannedHours;
     if (turno != null && turno!.isNotEmpty) data['turno'] = turno;

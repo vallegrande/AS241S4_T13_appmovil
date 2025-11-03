@@ -1,12 +1,16 @@
+// lib/features/users/panel_user.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'package:as241s4_t13_appmovil/core/models/users/user_model.dart';
 import 'package:as241s4_t13_appmovil/core/models/role/role_model.dart';
 import 'package:as241s4_t13_appmovil/core/services/users/user_service.dart';
 import 'package:as241s4_t13_appmovil/core/services/role/role_service.dart';
-import 'package:as241s4_t13_appmovil/widgets/header.dart';
-
-import 'form_user.dart';
+import 'package:as241s4_t13_appmovil/features/users/form_user.dart';
 
 class PanelUserScreen extends StatefulWidget {
   const PanelUserScreen({super.key});
@@ -15,7 +19,8 @@ class PanelUserScreen extends StatefulWidget {
   State<PanelUserScreen> createState() => _PanelUserScreenState();
 }
 
-class _PanelUserScreenState extends State<PanelUserScreen> {
+class _PanelUserScreenState extends State<PanelUserScreen>
+    with TickerProviderStateMixin {
   final UserService _userService = UserService();
   final RoleService _roleService = RoleService();
 
@@ -24,17 +29,24 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
   bool _isLoading = true;
   String? _error;
 
-  bool? _filterState;
+  // NOTE: _filterState now String? to allow "Todos"/"Activos"/"Inactivos" as values
+  String? _filterState;
   String? _filterRole;
   List<Role> _roles = [];
   final _searchController = TextEditingController();
 
-  // Color principal (rojo) usado en todo el archivo
-  final Color primaryRed = Colors.red.shade700;
+  final Color primaryOrange = const Color(0xFFFF6B35);
+  final Color lightOrange = const Color(0xFFFF8C42);
+  final Color surfaceBg = const Color(0xFFFAFAFC);
+  final Color cardBg = Colors.white;
+
+  late AnimationController _fabAnimController;
 
   @override
   void initState() {
     super.initState();
+    _fabAnimController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000));
     _loadRoles();
     _fetchUsers();
     _searchController.addListener(_applyFilters);
@@ -44,35 +56,33 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
   void dispose() {
     _searchController.removeListener(_applyFilters);
     _searchController.dispose();
+    _fabAnimController.dispose();
     super.dispose();
   }
 
   Future<void> _loadRoles() async {
     try {
       final roles = await _roleService.getAllRoles();
-      setState(() {
-        _roles = roles;
-      });
+      if (mounted) setState(() => _roles = roles);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Error al cargar roles: $e';
-        });
-      }
+      if (mounted) setState(() => _error = 'Error al cargar roles: $e');
     }
   }
 
   Future<void> _fetchUsers() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final fetchedUsers = await _userService.getAllUsers();
-      setState(() {
+      if (mounted) {
         users = fetchedUsers;
         _applyFilters();
-      });
+        _fabAnimController.forward();
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -81,29 +91,30 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
         });
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _applyFilters() {
+    final query = _searchController.text.trim().toLowerCase();
     setState(() {
       filteredUsers = users.where((user) {
-        if (_filterState != null && user.state != _filterState) {
-          return false;
+        // Estado: si _filterState es null o 'Todos' => no filtrar por estado
+        if (_filterState != null && _filterState != 'Todos') {
+          final wantsActive = _filterState == 'Activos';
+          if ((user.state ?? false) != wantsActive) return false;
         }
-        if (_filterRole != null && user.role.name != _filterRole) {
-          return false;
+
+        // Rol: si _filterRole es null o 'Todos' => no filtrar por rol
+        if (_filterRole != null && _filterRole != 'Todos') {
+          if (user.role.name != _filterRole) return false;
         }
-        final searchText = _searchController.text.toLowerCase();
-        if (searchText.isNotEmpty) {
-          return user.name.toLowerCase().contains(searchText) ||
-              user.surnames.toLowerCase().contains(searchText) ||
-              user.documentNumber.toLowerCase().contains(searchText) ||
-              user.email.toLowerCase().contains(searchText);
+
+        if (query.isNotEmpty) {
+          return user.name.toLowerCase().contains(query) ||
+              user.surnames.toLowerCase().contains(query) ||
+              user.documentNumber.toLowerCase().contains(query) ||
+              user.email.toLowerCase().contains(query);
         }
         return true;
       }).toList();
@@ -112,574 +123,955 @@ class _PanelUserScreenState extends State<PanelUserScreen> {
 
   void _goToForm({User? user}) async {
     final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => UserForm(user: user),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            UserForm(user: user),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+          final tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+              position: animation.drive(tween), child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 400),
       ),
     );
-
-    if (result == true) {
-      _fetchUsers();
-    }
+    if (result == true) _fetchUsers();
   }
 
   Future<void> _deleteUser(int userId) async {
     final confirm = await _showConfirmDialog(
-      '¿Desactivar Usuario?',
-      '¿Estás seguro de que deseas desactivar este usuario?',
+      'Desactivar usuario',
+      '¿Seguro que deseas desactivar este usuario?',
+      Icons.person_off_rounded,
+      Colors.orange.shade700,
     );
-
     if (confirm == true) {
       try {
         await _userService.deleteUser(userId);
         _fetchUsers();
-        _showSnackBar('Usuario desactivado correctamente', Colors.orange);
+        _showSnackBar('Usuario desactivado exitosamente', primaryOrange,
+            Icons.check_circle_rounded);
       } catch (e) {
-        _showSnackBar('Error al desactivar usuario: $e', Colors.red);
+        _showSnackBar('Error al desactivar: $e', Colors.red.shade600,
+            Icons.error_rounded);
       }
     }
   }
 
   Future<void> _restoreUser(int userId) async {
     final confirm = await _showConfirmDialog(
-      '¿Reactivar Usuario?',
-      '¿Estás seguro de que deseas reactivar este usuario?',
+      'Reactivar usuario',
+      '¿Deseas reactivar este usuario?',
+      Icons.check_circle_rounded,
+      Colors.green.shade600,
     );
-
     if (confirm == true) {
       try {
         await _userService.restoreUser(userId);
         _fetchUsers();
-        _showSnackBar('Usuario reactivado correctamente', Colors.green);
+        _showSnackBar('Usuario reactivado exitosamente', Colors.green.shade600,
+            Icons.check_circle_rounded);
       } catch (e) {
-        _showSnackBar('Error al reactivar usuario: $e', Colors.red);
+        _showSnackBar(
+            'Error al reactivar: $e', Colors.red.shade600, Icons.error_rounded);
       }
     }
   }
 
-  Future<bool?> _showConfirmDialog(String title, String content) {
+  Future<bool?> _showConfirmDialog(
+      String title, String content, IconData icon, Color color) {
     return showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(content),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: cardBg,
+        elevation: 8,
+        contentPadding: const EdgeInsets.all(0),
+        title: Row(
+          children: [
+            Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                    color: color.withOpacity(0.12), shape: BoxShape.circle),
+                child: Icon(icon, color: color, size: 28)),
+            const SizedBox(width: 16),
+            Expanded(
+                child: Text(title,
+                    style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        color: const Color(0xFF1A1A2E)))),
+          ],
+        ),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 0),
+          child: Text(content,
+              style: GoogleFonts.inter(
+                  fontSize: 15, color: Colors.grey.shade700, height: 1.5)),
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actionsPadding: const EdgeInsets.only(right: 16, bottom: 16, left: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12))),
+            child: Text('Cancelar',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                    fontSize: 15)),
           ),
+          const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+                backgroundColor: color,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12))),
+            child: Text('Confirmar',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700, fontSize: 15)),
           ),
         ],
+      ).animate().scale(duration: 300.ms, curve: Curves.easeOutBack).fade(),
+    );
+  }
+
+  void _showSnackBar(String message, Color color, IconData icon) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(message,
+                  style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14)),
+            ),
+          ],
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+        elevation: 6,
       ),
     );
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+            colors: [primaryOrange, lightOrange, const Color(0xFFFFA556)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+              color: primaryOrange.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: Colors.white.withOpacity(0.3), width: 2)),
+                child: const Icon(Icons.people_alt_rounded,
+                    color: Colors.white, size: 32),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Gestión de Usuarios',
+                        style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5)),
+                    const SizedBox(height: 4),
+                    Text('Administra perfiles y permisos del sistema',
+                        style: GoogleFonts.inter(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildStatCard('Total', users.length.toString(),
+                  Icons.people_rounded, Colors.white),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                  'Activos',
+                  users.where((u) => u.state == true).length.toString(),
+                  Icons.check_circle_rounded,
+                  Colors.green.shade400),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                  'Inactivos',
+                  users.where((u) => u.state == false).length.toString(),
+                  Icons.cancel_rounded,
+                  Colors.red.shade400),
+            ],
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 600.ms)
+        .slideY(begin: -0.3, duration: 600.ms, curve: Curves.easeOutCubic);
+  }
+
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color iconColor) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value,
+                      style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800)),
+                  Text(label,
+                      style: GoogleFonts.inter(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilters(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: primaryOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.filter_list_rounded,
+                    color: primaryOrange, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text('Filtros de Búsqueda',
+                  style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1A2E))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: surfaceBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200, width: 1.5),
+            ),
+            child: TextField(
+              controller: _searchController,
+              style:
+                  GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre, documento o email...',
+                hintStyle: GoogleFonts.inter(
+                    fontSize: 13, color: Colors.grey.shade400),
+                prefixIcon:
+                    Icon(Icons.search_rounded, color: primaryOrange, size: 22),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear_rounded,
+                            color: Colors.grey.shade400, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _applyFilters();
+                        },
+                      )
+                    : null,
+                filled: false,
+                border: InputBorder.none,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // TU DISEÑO EN ROW – SIN OVERFLOW
+          ClipRect(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildCustomDropdown<String?>(
+                    value: _filterRole,
+                    hint: 'Roles',
+                    icon: Icons.badge_rounded,
+                    items: [
+                      // ahora "Todos" tiene valor 'Todos' (no null) para que se muestre cuando se seleccione
+                      const DropdownMenuItem<String?>(
+                          value: 'Todos', child: Text('Todos')),
+                      ..._roles.map((r) => DropdownMenuItem<String?>(
+                          value: r.name,
+                          child: Text(r.name, style: GoogleFonts.inter()))),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _filterRole = value;
+                        _applyFilters();
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCustomDropdown<String?>(
+                    value: _filterState,
+                    hint: 'Estados', // hint cuando value == null
+                    icon: Icons.toggle_on_rounded,
+                    items: const [
+                      // Usamos String values para que "Todos" se muestre si el usuario lo elige
+                      DropdownMenuItem<String?>(
+                          value: 'Todos', child: Text('Todos')),
+                      DropdownMenuItem<String?>(
+                          value: 'Activos', child: Text('Activos')),
+                      DropdownMenuItem<String?>(
+                          value: 'Inactivos', child: Text('Inactivos')),
+                    ],
+                    onChanged: (v) {
+                      setState(() {
+                        _filterState = v;
+                        _applyFilters();
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _filterRole = null;
+                      _filterState = null;
+                      _searchController.clear();
+                      _applyFilters();
+                    });
+                  },
+                  icon: const Icon(Icons.clear_all_rounded, size: 18),
+                  label: Text('Limpiar',
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade700,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(delay: 200.ms, duration: 600.ms)
+        .slideY(begin: 0.2, duration: 600.ms);
+  }
+
+  Widget _buildCustomDropdown<T>({
+    required T value,
+    required String hint,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    // Construimos el widget que se mostrará en el botón: hint cuando value == null, o el child del item seleccionado.
+    Widget displayed;
+    if (value == null) {
+      displayed = Text(hint,
+          style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500));
+    } else {
+      Widget? found;
+      for (var item in items) {
+        if (item.value == value) {
+          found = item.child;
+          break;
+        }
+      }
+      displayed = found ??
+          Text(hint,
+              style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500));
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton2<T>(
+          isExpanded: true,
+          value: value,
+          // usamos `button` contenido a través de `customButton` behavior de DropdownButton2
+          hint: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Flexible(child: displayed),
+            ],
+          ),
+          items: items,
+          onChanged: onChanged,
+          buttonStyleData: ButtonStyleData(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+          ),
+          dropdownStyleData: DropdownStyleData(
+            width: 250,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                )
+              ],
+            ),
+            offset: const Offset(0, 8),
+          ),
+          menuItemStyleData: const MenuItemStyleData(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          ),
+          iconStyleData: IconStyleData(
+            icon: const Icon(Icons.expand_more_rounded),
+            iconSize: 22,
+            iconEnabledColor: Colors.grey.shade600,
+          ),
+        ),
       ),
     );
   }
 
   Widget _userCard(User user, int index) {
     final isActive = user.state ?? false;
-
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          gradient: LinearGradient(
-            colors: [Colors.white, Colors.grey.shade50],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 65,
-                    height: 65,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isActive ? primaryRed : Colors.grey,
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isActive ? primaryRed : Colors.grey).withOpacity(0.25),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: user.profilePhoto != null
-                          ? Image.network(
-                              user.profilePhoto!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, o, s) => const Icon(
-                                Icons.person,
-                                size: 35,
-                                color: Colors.grey,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              size: 35,
-                              color: Colors.grey,
-                            ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: isActive ? Colors.green : Colors.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${user.name} ${user.surnames}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3142),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.badge, size: 16, color: primaryRed),
-                        const SizedBox(width: 6),
-                        Text(
-                          user.role.name,
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.business, size: 16, color: primaryRed),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            user.department.name,
-                            style: TextStyle(color: Colors.grey[700]),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.email, size: 16, color: primaryRed),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            user.email,
-                            style: const TextStyle(color: Colors.blueGrey),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isActive ? Colors.green : Colors.red,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        isActive ? 'ACTIVO' : 'INACTIVO',
-                        style: TextStyle(
-                          color: isActive ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: primaryRed),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _goToForm(user: user);
-                  } else if (value == 'toggle_state') {
-                    isActive ? _deleteUser(user.idUser!) : _restoreUser(user.idUser!);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, color: primaryRed, size: 20),
-                        const SizedBox(width: 10),
-                        const Text('Editar'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'toggle_state',
-                    child: Row(
-                      children: [
-                        Icon(
-                          isActive ? Icons.cancel : Icons.check_circle,
-                          color: isActive ? Colors.red : Colors.green,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          isActive ? 'Desactivar' : 'Reactivar',
-                          style: TextStyle(
-                            color: isActive ? Colors.red : Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Center(
-                child: Container(
-                  // Si quieres ocupar literalmente todo el ancho, elimina la siguiente línea:
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AnimationConfiguration.staggeredList(
+      position: index,
+      duration: const Duration(milliseconds: 400),
+      child: SlideAnimation(
+        verticalOffset: 30,
+        curve: Curves.easeOutCubic,
+        child: FadeInAnimation(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade100, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4))
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _goToForm(user: user),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header - ahora en rojo
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [primaryRed, Colors.red.shade400],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryRed.withOpacity(0.18),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
+                      Stack(
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                  colors: [
+                                    primaryOrange.withOpacity(0.2),
+                                    const Color(0xFFFFA556).withOpacity(0.1)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: primaryOrange.withOpacity(0.2),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4))
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.people, color: Colors.white, size: 32),
-                            const SizedBox(width: 15),
-                            const Text(
-                              'Gestión de Usuarios',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  labelText: 'Buscar por Nombre, Documento o Email',
-                                  prefixIcon: Icon(
-                                    Icons.search,
-                                    color: primaryRed,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: primaryRed,
-                                      width: 2,
+                            child: ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl: user.profilePhoto ?? '',
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => Container(
+                                  decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                          colors: [primaryOrange, lightOrange],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight)),
+                                  child: Center(
+                                    child: Text(
+                                      user.name.isNotEmpty
+                                          ? user.name[0].toUpperCase()
+                                          : 'U',
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w800),
                                     ),
                                   ),
                                 ),
+                                placeholder: (context, url) => Container(
+                                  color: Colors.grey.shade100,
+                                  child: Center(
+                                      child: CircularProgressIndicator(
+                                          color: primaryOrange,
+                                          strokeWidth: 2.5)),
+                                ),
                               ),
-                              const SizedBox(height: 15),
-                              Wrap(
-                                spacing: 15,
-                                runSpacing: 15,
-                                alignment: WrapAlignment.center,
-                                children: [
-                                  // DROPDOWN SIMPLE DE ROL
-                                  Container(
-                                    width: 200,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: primaryRed),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        isExpanded: true,
-                                        hint: const Text('Filtrar por Rol'),
-                                        value: _filterRole,
-                                        items: [
-                                          const DropdownMenuItem<String>(
-                                            value: null,
-                                            child: Text('Todos los Roles'),
-                                          ),
-                                          ..._roles.map((role) => DropdownMenuItem<String>(
-                                                value: role.name,
-                                                child: Text(role.name),
-                                              )),
-                                        ],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _filterRole = value;
-                                            _applyFilters();
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  // DROPDOWN SIMPLE DE ESTADO
-                                  Container(
-                                    width: 200,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: primaryRed),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<bool?>(
-                                        isExpanded: true,
-                                        hint: const Text('Filtrar Estado'),
-                                        value: _filterState,
-                                        items: const [
-                                          DropdownMenuItem<bool?>(
-                                            value: null,
-                                            child: Text('Todos los Estados'),
-                                          ),
-                                          DropdownMenuItem<bool?>(
-                                            value: true,
-                                            child: Text(
-                                              'Activos',
-                                              style: TextStyle(color: Colors.green),
-                                            ),
-                                          ),
-                                          DropdownMenuItem<bool?>(
-                                            value: false,
-                                            child: Text(
-                                              'Inactivos',
-                                              style: TextStyle(color: Colors.red),
-                                            ),
-                                          ),
-                                        ],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _filterState = value;
-                                            _applyFilters();
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        _filterRole = null;
-                                        _filterState = null;
-                                        _searchController.clear();
-                                        _applyFilters();
-                                      });
-                                    },
-                                    icon: const Icon(Icons.clear_all, color: Colors.white),
-                                    label: const Text(
-                                      'Limpiar Filtros',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.grey,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? Colors.green.shade500
+                                    : Colors.red.shade500,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: cardBg, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color:
+                                          (isActive ? Colors.green : Colors.red)
+                                              .withOpacity(0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2))
                                 ],
                               ),
-                            ],
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${user.name} ${user.surnames}',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1A1A2E),
+                                  letterSpacing: -0.3),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                _buildInfoChip(
+                                    icon: Icons.badge_rounded,
+                                    label: user.role.name,
+                                    color: primaryOrange),
+                                _buildInfoChip(
+                                    icon: Icons.business_rounded,
+                                    label: user.department.name,
+                                    color: Colors.blue.shade600),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.email_rounded,
+                                    size: 14, color: Colors.grey.shade500),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                    child: Text(user.email,
+                                        style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 25),
-                      if (_error != null)
-                        Container(
-                          padding: const EdgeInsets.all(15),
-                          margin: const EdgeInsets.only(bottom: 15),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red, width: 1),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.red),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _error!,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                      const SizedBox(width: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                            color: primaryOrange.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12)),
+                        child: PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert_rounded,
+                              color: primaryOrange, size: 24),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 8,
+                          offset: const Offset(-10, 40),
+                          onSelected: (value) {
+                            if (value == 'edit') _goToForm(user: user);
+                            if (value == 'toggle_state') {
+                              isActive
+                                  ? _deleteUser(user.idUser!)
+                                  : _restoreUser(user.idUser!);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                          color: primaryOrange.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      child: Icon(Icons.edit_rounded,
+                                          color: primaryOrange, size: 18)),
+                                  const SizedBox(width: 12),
+                                  Text('Editar usuario',
+                                      style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600)),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const PopupMenuDivider(height: 8),
+                            PopupMenuItem(
+                              value: 'toggle_state',
+                              child: Row(
+                                children: [
+                                  Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                          color: (isActive
+                                                  ? Colors.red
+                                                  : Colors.green)
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      child: Icon(
+                                          isActive
+                                              ? Icons.person_off_rounded
+                                              : Icons.check_circle_rounded,
+                                          color: isActive
+                                              ? Colors.red.shade600
+                                              : Colors.green.shade600,
+                                          size: 18)),
+                                  const SizedBox(width: 12),
+                                  Text(isActive ? 'Desactivar' : 'Reactivar',
+                                      style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          color: isActive
+                                              ? Colors.red.shade700
+                                              : Colors.green.shade700)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      _isLoading
-                          ? Center(
-                              child: CircularProgressIndicator(
-                                color: primaryRed,
-                              ),
-                            )
-                          : filteredUsers.isEmpty
-                              ? Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(40),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.person_off_outlined,
-                                          size: 80,
-                                          color: Colors.grey[300],
-                                        ),
-                                        const SizedBox(height: 20),
-                                        const Text(
-                                          'No se encontraron usuarios',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        const Text(
-                                          'Intenta ajustar los filtros de búsqueda',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: filteredUsers.length,
-                                  itemBuilder: (context, index) =>
-                                      _userCard(filteredUsers[index], index),
-                                ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(
+      {required IconData icon, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _goToForm(),
-        backgroundColor: primaryRed,
-        icon: const Icon(Icons.add_circle, color: Colors.white),
-        label: const Text(
-          'NUEVO USUARIO',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+    );
+  }
+
+  Widget _buildErrorBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient:
+            LinearGradient(colors: [Colors.red.shade50, Colors.red.shade100]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade300, width: 2),
+      ),
+      child: Row(
+        children: [
+          Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: Colors.red.shade600, shape: BoxShape.circle),
+              child: const Icon(Icons.error_outline_rounded,
+                  color: Colors.white, size: 24)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Error al cargar datos',
+                    style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red.shade900,
+                        fontSize: 16)),
+                const SizedBox(height: 2),
+                Text(_error!,
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.red.shade800,
+                        fontSize: 13)),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _error = null),
+            icon: Icon(Icons.close_rounded, color: Colors.red.shade700),
+            tooltip: 'Cerrar',
+          ),
+        ],
+      ),
+    ).animate().shake(hz: 4, duration: 500.ms).fadeIn();
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight),
+                shape: BoxShape.circle),
+            child: Icon(Icons.person_search_rounded,
+                size: 80, color: Colors.grey.shade300),
+          ),
+          const SizedBox(height: 24),
+          Text('No se encontraron usuarios',
+              style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade700)),
+          const SizedBox(height: 8),
+          Text('Intenta ajustar los filtros o crear uno nuevo',
+              style:
+                  GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500)),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                _filterRole = null;
+                _filterState = null;
+                _searchController.clear();
+                _applyFilters();
+              });
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Limpiar filtros'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryOrange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .scale(duration: 400.ms, curve: Curves.easeOutBack);
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: primaryOrange.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10))
+              ],
+            ),
+            child:
+                CircularProgressIndicator(color: primaryOrange, strokeWidth: 3),
+          )
+              .animate()
+              .scale(duration: 800.ms, curve: Curves.easeInOut)
+              .then()
+              .shake(hz: 2),
+          const SizedBox(height: 24),
+          Text('Cargando usuarios...',
+              style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              children: [
+                _buildHeader(context),
+                const SizedBox(height: 20),
+                _buildFilters(context),
+                const SizedBox(height: 20),
+                if (_error != null) _buildErrorBanner(),
+              ],
+            ),
           ),
         ),
-        elevation: 8,
-      ),
+        if (_isLoading)
+          SliverFillRemaining(
+            child: _buildLoadingState(),
+          ),
+        if (!_isLoading && filteredUsers.isEmpty)
+          SliverFillRemaining(
+            child: _buildEmptyState(),
+          ),
+        if (!_isLoading && filteredUsers.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 100),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _userCard(filteredUsers[index], index),
+                childCount: filteredUsers.length,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
