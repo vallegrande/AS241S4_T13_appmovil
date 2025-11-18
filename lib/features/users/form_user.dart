@@ -24,6 +24,36 @@ class UserForm extends StatefulWidget {
   State<UserForm> createState() => _UserFormState();
 }
 
+class _TimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    String cleaned = text.replaceAll(RegExp(r'[^0-9:]'), '');
+
+    // Auto-insertar ':' después de 2 dígitos
+    if (cleaned.length == 2 && !cleaned.contains(':')) {
+      cleaned = '$cleaned:';
+    } else if (cleaned.length > 2 && !cleaned.contains(':')) {
+      cleaned = '${cleaned.substring(0, 2)}:${cleaned.substring(2)}';
+    }
+
+    // Limitar a 5 caracteres
+    if (cleaned.length > 5) {
+      cleaned = cleaned.substring(0, 5);
+    }
+
+    return TextEditingValue(
+      text: cleaned,
+      selection: TextSelection.collapsed(offset: cleaned.length),
+    );
+  }
+}
+
 class _UserFormState extends State<UserForm>
     with SingleTickerProviderStateMixin {
   final UserService _userService = UserService();
@@ -157,30 +187,7 @@ class _UserFormState extends State<UserForm>
   }
 
   String _formatTimeInput(String input) {
-    String cleaned = input.replaceAll(RegExp(r'[^0-9:]'), '');
-
-    if (!cleaned.contains(':')) {
-      if (cleaned.isEmpty) return '';
-      int? hour = int.tryParse(cleaned);
-      if (hour != null && hour >= 0 && hour <= 23) {
-        return '${hour.toString().padLeft(2, '0')}:00';
-      }
-    }
-
-    if (cleaned.contains(':')) {
-      List<String> parts = cleaned.split(':');
-      if (parts.length == 2) {
-        int? hour = int.tryParse(parts[0]);
-        int? minute = int.tryParse(parts[1]);
-
-        if (hour != null && minute != null) {
-          if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-            return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-          }
-        }
-      }
-    }
-    return cleaned;
+    return input.replaceAll(RegExp(r'[^0-9:]'), '');
   }
 
   void _calculateTurnoAndHours() {
@@ -767,52 +774,34 @@ class _UserFormState extends State<UserForm>
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(
-                      child: _buildTextField(
-                          controller: _horaInicioController,
-                          labelText: 'Hora Inicio',
-                          icon: Icons.schedule_rounded,
-                          keyboardType: TextInputType.number,
-                          validator: _validateTime,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9:]')),
-                            LengthLimitingTextInputFormatter(5)
-                          ],
-                          onChanged: (value) {
-                            if (value.length >= 1 && !value.contains(':')) {
-                              String formatted = _formatTimeInput(value);
-                              if (formatted != value && formatted.isNotEmpty) {
-                                _horaInicioController.value = TextEditingValue(
-                                    text: formatted,
-                                    selection: TextSelection.collapsed(
-                                        offset: formatted.length));
-                              }
-                            }
-                          })),
+                    child: _buildTextField(
+                      controller: _horaInicioController,
+                      labelText: 'Hora Inicio (HH:MM)',
+                      icon: Icons.schedule_rounded,
+                      keyboardType: TextInputType.text,
+                      validator: _validateTime,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+                        LengthLimitingTextInputFormatter(5),
+                        _TimeInputFormatter(), // ← NUEVO
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                      child: _buildTextField(
-                          controller: _horaFinController,
-                          labelText: 'Hora Fin',
-                          icon: Icons.access_time_filled_rounded,
-                          keyboardType: TextInputType.number,
-                          validator: _validateTime,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9:]')),
-                            LengthLimitingTextInputFormatter(5)
-                          ],
-                          onChanged: (value) {
-                            if (value.length >= 1 && !value.contains(':')) {
-                              String formatted = _formatTimeInput(value);
-                              if (formatted != value && formatted.isNotEmpty) {
-                                _horaFinController.value = TextEditingValue(
-                                    text: formatted,
-                                    selection: TextSelection.collapsed(
-                                        offset: formatted.length));
-                              }
-                            }
-                          })),
+                    child: _buildTextField(
+                      controller: _horaFinController,
+                      labelText: 'Hora Fin (HH:MM)',
+                      icon: Icons.access_time_filled_rounded,
+                      keyboardType: TextInputType.text,
+                      validator: _validateTime,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+                        LengthLimitingTextInputFormatter(5),
+                        _TimeInputFormatter(), // ← NUEVO
+                      ],
+                    ),
+                  ),
                 ]),
                 const SizedBox(height: 16),
                 _buildDropdown2<String>(

@@ -216,7 +216,7 @@ class _AppHeaderState extends State<AppHeader>
     return Hero(
       tag: 'app_logo',
       child: Image.asset(
-        "assets/header/LogoHeader.png",
+        "assets/header/Logo.png",
         height: 70,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {

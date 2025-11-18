@@ -54,6 +54,7 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
 
   final List<String> _categories = [
     'Carnes',
+    'Pollos',
     'Vegetales',
     'Lácteos',
     'Granos',

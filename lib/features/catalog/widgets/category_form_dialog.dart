@@ -90,31 +90,8 @@ class _CategoryFormDialogState extends State<CategoryFormDialog> {
       }
 
       if (mounted) {
-        Navigator.of(context).pop();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          widget.onSaved();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Text(
-                  widget.category == null
-                      ? 'Categoría creada exitosamente'
-                      : 'Categoría actualizada exitosamente',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        // Llamamos al callback que cierra el diálogo y recarga datos
+        widget.onSaved();
       }
     } catch (e) {
       setState(() => _isLoading = false);

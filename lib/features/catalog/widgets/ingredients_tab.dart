@@ -47,9 +47,23 @@ class _IngredientsTabState extends State<IngredientsTab> {
       widget.onDataChanged?.call();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      _showSnackBar('Error al cargar ingredientes', Colors.red.shade600,
-          Icons.error_rounded);
+
+      // MANEJO DEL ERROR 404 - Si no hay ingredientes, mostrar lista vacía
+      if (e.toString().contains('404') ||
+          e.toString().contains('no encontrad') ||
+          e.toString().toLowerCase().contains('not found')) {
+        setState(() {
+          _ingredients = [];
+          _filteredIngredients = [];
+          _isLoading = false;
+        });
+        widget.onDataChanged?.call();
+      } else {
+        // Solo mostrar error si es un error real (no 404)
+        setState(() => _isLoading = false);
+        _showSnackBar('Error al cargar ingredientes: ${e.toString()}',
+            Colors.red.shade600, Icons.error_rounded);
+      }
     }
   }
 
@@ -760,7 +774,7 @@ class _IngredientsTabState extends State<IngredientsTab> {
           ),
           const SizedBox(height: 24),
           Text(
-            'No se encontraron ingredientes',
+            'No hay ingredientes',
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -769,8 +783,25 @@ class _IngredientsTabState extends State<IngredientsTab> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Intenta ajustar los filtros o crear uno nuevo',
+            _ingredients.isEmpty
+                ? 'Agrega tu primer ingrediente'
+                : 'Intenta ajustar los filtros',
             style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _showFormDialog(),
+            icon: const Icon(Icons.add_rounded),
+            label: Text('Agregar ingrediente',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryOrange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
           ),
         ],
       ),

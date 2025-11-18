@@ -7,6 +7,7 @@ class Presentation {
   final double? takeoutPrice;
   final double? promoPrice;
   final int? preparationTime;
+  final String? dishPhotoUrl;
   final bool state;
   final String? createdAt;
   final Map<String, dynamic>? product;
@@ -20,6 +21,7 @@ class Presentation {
     this.takeoutPrice,
     this.promoPrice,
     this.preparationTime,
+    this.dishPhotoUrl,
     required this.state,
     this.createdAt,
     this.product,
@@ -35,6 +37,7 @@ class Presentation {
       takeoutPrice: (json['takeoutPrice'] as num?)?.toDouble(),
       promoPrice: (json['promoPrice'] as num?)?.toDouble(),
       preparationTime: json['preparationTime'] as int?,
+      dishPhotoUrl: json['dishPhotoUrl'] as String?,
       state: json['state'] as bool? ?? true,
       createdAt: json['createdAt'] as String?,
       product: json['product'] as Map<String, dynamic>?,
@@ -51,6 +54,7 @@ class Presentation {
       if (takeoutPrice != null) 'takeoutPrice': takeoutPrice,
       if (promoPrice != null) 'promoPrice': promoPrice,
       if (preparationTime != null) 'preparationTime': preparationTime,
+      if (dishPhotoUrl != null) 'dishPhotoUrl': dishPhotoUrl,
       'state': state,
       if (createdAt != null) 'createdAt': createdAt,
       if (product != null) 'product': product,
@@ -66,6 +70,7 @@ class Presentation {
     double? takeoutPrice,
     double? promoPrice,
     int? preparationTime,
+    String? dishPhotoUrl,
     bool? state,
     String? createdAt,
     Map<String, dynamic>? product,
@@ -79,6 +84,7 @@ class Presentation {
       takeoutPrice: takeoutPrice ?? this.takeoutPrice,
       promoPrice: promoPrice ?? this.promoPrice,
       preparationTime: preparationTime ?? this.preparationTime,
+      dishPhotoUrl: dishPhotoUrl ?? this.dishPhotoUrl,
       state: state ?? this.state,
       createdAt: createdAt ?? this.createdAt,
       product: product ?? this.product,

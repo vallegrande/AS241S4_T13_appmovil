@@ -11,6 +11,7 @@ import 'package:as241s4_t13_appmovil/core/models/role/role_model.dart';
 import 'package:as241s4_t13_appmovil/core/services/users/user_service.dart';
 import 'package:as241s4_t13_appmovil/core/services/role/role_service.dart';
 import 'package:as241s4_t13_appmovil/features/users/form_user.dart';
+import 'package:as241s4_t13_appmovil/config/environment.dart';
 
 class PanelUserScreen extends StatefulWidget {
   const PanelUserScreen({super.key});
@@ -29,7 +30,6 @@ class _PanelUserScreenState extends State<PanelUserScreen>
   bool _isLoading = true;
   String? _error;
 
-  // NOTE: _filterState now String? to allow "Todos"/"Activos"/"Inactivos" as values
   String? _filterState;
   String? _filterRole;
   List<Role> _roles = [];
@@ -58,6 +58,20 @@ class _PanelUserScreenState extends State<PanelUserScreen>
     _searchController.dispose();
     _fabAnimController.dispose();
     super.dispose();
+  }
+
+  // 🔥 MÉTODO HELPER PARA CONSTRUIR URL COMPLETA DE LA FOTO
+  String _buildPhotoUrl(String? photoPath) {
+    if (photoPath == null || photoPath.isEmpty) return '';
+
+    // Si ya es una URL completa, retornarla tal cual
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      return photoPath;
+    }
+
+    // Construir URL completa desde el nombre del archivo
+    // Asumiendo que el backend expone las fotos en /uploads/users/
+    return '${Environment.apiUrl}/uploads/User/$photoPath';
   }
 
   Future<void> _loadRoles() async {
@@ -99,13 +113,11 @@ class _PanelUserScreenState extends State<PanelUserScreen>
     final query = _searchController.text.trim().toLowerCase();
     setState(() {
       filteredUsers = users.where((user) {
-        // Estado: si _filterState es null o 'Todos' => no filtrar por estado
         if (_filterState != null && _filterState != 'Todos') {
           final wantsActive = _filterState == 'Activos';
           if ((user.state ?? false) != wantsActive) return false;
         }
 
-        // Rol: si _filterRole es null o 'Todos' => no filtrar por rol
         if (_filterRole != null && _filterRole != 'Todos') {
           if (user.role.name != _filterRole) return false;
         }
@@ -461,7 +473,6 @@ class _PanelUserScreenState extends State<PanelUserScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // TU DISEÑO EN ROW – SIN OVERFLOW
           ClipRect(
             child: Row(
               children: [
@@ -471,7 +482,6 @@ class _PanelUserScreenState extends State<PanelUserScreen>
                     hint: 'Roles',
                     icon: Icons.badge_rounded,
                     items: [
-                      // ahora "Todos" tiene valor 'Todos' (no null) para que se muestre cuando se seleccione
                       const DropdownMenuItem<String?>(
                           value: 'Todos', child: Text('Todos')),
                       ..._roles.map((r) => DropdownMenuItem<String?>(
@@ -490,10 +500,9 @@ class _PanelUserScreenState extends State<PanelUserScreen>
                 Expanded(
                   child: _buildCustomDropdown<String?>(
                     value: _filterState,
-                    hint: 'Estados', // hint cuando value == null
+                    hint: 'Estados',
                     icon: Icons.toggle_on_rounded,
                     items: const [
-                      // Usamos String values para que "Todos" se muestre si el usuario lo elige
                       DropdownMenuItem<String?>(
                           value: 'Todos', child: Text('Todos')),
                       DropdownMenuItem<String?>(
@@ -551,7 +560,6 @@ class _PanelUserScreenState extends State<PanelUserScreen>
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
-    // Construimos el widget que se mostrará en el botón: hint cuando value == null, o el child del item seleccionado.
     Widget displayed;
     if (value == null) {
       displayed = Text(hint,
@@ -585,7 +593,6 @@ class _PanelUserScreenState extends State<PanelUserScreen>
         child: DropdownButton2<T>(
           isExpanded: true,
           value: value,
-          // usamos `button` contenido a través de `customButton` behavior de DropdownButton2
           hint: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -632,6 +639,9 @@ class _PanelUserScreenState extends State<PanelUserScreen>
 
   Widget _userCard(User user, int index) {
     final isActive = user.state ?? false;
+    // 🔥 CONSTRUIR URL COMPLETA DE LA FOTO
+    final photoUrl = _buildPhotoUrl(user.profilePhoto);
+
     return AnimationConfiguration.staggeredList(
       position: index,
       duration: const Duration(milliseconds: 400),
@@ -684,35 +694,21 @@ class _PanelUserScreenState extends State<PanelUserScreen>
                               ],
                             ),
                             child: ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl: user.profilePhoto ?? '',
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => Container(
-                                  decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                          colors: [primaryOrange, lightOrange],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight)),
-                                  child: Center(
-                                    child: Text(
-                                      user.name.isNotEmpty
-                                          ? user.name[0].toUpperCase()
-                                          : 'U',
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w800),
-                                    ),
-                                  ),
-                                ),
-                                placeholder: (context, url) => Container(
-                                  color: Colors.grey.shade100,
-                                  child: Center(
-                                      child: CircularProgressIndicator(
-                                          color: primaryOrange,
-                                          strokeWidth: 2.5)),
-                                ),
-                              ),
+                              child: photoUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: photoUrl,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (context, url, error) =>
+                                          _buildDefaultAvatar(user),
+                                      placeholder: (context, url) => Container(
+                                        color: Colors.grey.shade100,
+                                        child: Center(
+                                            child: CircularProgressIndicator(
+                                                color: primaryOrange,
+                                                strokeWidth: 2.5)),
+                                      ),
+                                    )
+                                  : _buildDefaultAvatar(user),
                             ),
                           ),
                           Positioned(
@@ -870,6 +866,24 @@ class _PanelUserScreenState extends State<PanelUserScreen>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // 🔥 WIDGET HELPER PARA AVATAR POR DEFECTO
+  Widget _buildDefaultAvatar(User user) {
+    return Container(
+      decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: [primaryOrange, lightOrange],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight)),
+      child: Center(
+        child: Text(
+          user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+          style: GoogleFonts.poppins(
+              color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -1036,42 +1050,66 @@ class _PanelUserScreenState extends State<PanelUserScreen>
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Column(
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 20),
-                _buildFilters(context),
-                const SizedBox(height: 20),
-                if (_error != null) _buildErrorBanner(),
-              ],
-            ),
-          ),
-        ),
-        if (_isLoading)
-          SliverFillRemaining(
-            child: _buildLoadingState(),
-          ),
-        if (!_isLoading && filteredUsers.isEmpty)
-          SliverFillRemaining(
-            child: _buildEmptyState(),
-          ),
-        if (!_isLoading && filteredUsers.isNotEmpty)
-          SliverPadding(
-            padding: const EdgeInsets.only(bottom: 100),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _userCard(filteredUsers[index], index),
-                childCount: filteredUsers.length,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121212) : surfaceBg,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 12),
+                  _buildFilters(context),
+                  const SizedBox(height: 12),
+                  if (_error != null) _buildErrorBanner(),
+                ],
               ),
             ),
           ),
-      ],
+          if (_isLoading)
+            SliverFillRemaining(
+              child: _buildLoadingState(),
+            ),
+          if (!_isLoading && filteredUsers.isEmpty)
+            SliverFillRemaining(
+              child: _buildEmptyState(),
+            ),
+          if (!_isLoading && filteredUsers.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _userCard(filteredUsers[index], index),
+                  childCount: filteredUsers.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: ScaleTransition(
+        scale: _fabAnimController,
+        child: FloatingActionButton.extended(
+          onPressed: () => _goToForm(),
+          backgroundColor: primaryOrange,
+          foregroundColor: Colors.white,
+          elevation: 8,
+          icon: const Icon(Icons.person_add_rounded, size: 24),
+          label: Text(
+            'Nuevo Usuario',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

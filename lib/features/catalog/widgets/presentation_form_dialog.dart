@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/presentation.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/product.dart';
@@ -53,6 +57,10 @@ class _PresentationFormDialogState extends State<PresentationFormDialog>
   final Color primaryOrange = const Color(0xFFFF6B35);
   final Color lightOrange = const Color(0xFFFF8C42);
   static const double _inputHeight = 56.0;
+  File? _selectedImage;
+  String? _existingImageUrl;
+  String? _imageFileName;
+  Uint8List? _webImage;
 
   @override
   void initState() {
@@ -92,6 +100,15 @@ class _PresentationFormDialogState extends State<PresentationFormDialog>
         _preparationTimeController.text =
             widget.presentation!.preparationTime?.toString() ?? '';
         _state = widget.presentation!.state;
+
+        // ✅ NUEVO: Cargar imagen existente
+        if (widget.presentation!.dishPhotoUrl != null &&
+            widget.presentation!.dishPhotoUrl!.isNotEmpty) {
+          setState(() {
+            _existingImageUrl = PresentationService.getPhotoUrl(
+                widget.presentation!.dishPhotoUrl);
+          });
+        }
 
         final presentationId = widget.presentation!.idPresentation;
 
@@ -216,11 +233,51 @@ class _PresentationFormDialogState extends State<PresentationFormDialog>
         product: {'idProduct': _selectedProduct!.idProduct},
       );
 
+      // Crear o actualizar la presentación
+      Presentation savedPresentation;
       if (widget.presentation == null) {
-        await PresentationService.create(presentation);
+        savedPresentation = await PresentationService.create(presentation);
       } else {
-        await PresentationService.update(
+        savedPresentation = await PresentationService.update(
             widget.presentation!.idPresentation!, presentation);
+      }
+
+      // ✅ MODIFICADO: Subir la imagen (funciona para web y móvil)
+      if (savedPresentation.idPresentation != null) {
+        if (kIsWeb && _webImage != null) {
+          // Para Web: usar bytes directamente
+          try {
+            await PresentationService.uploadPhotoBytes(
+              savedPresentation.idPresentation!,
+              _webImage!,
+              _imageFileName ?? 'image.jpg',
+            );
+          } catch (e) {
+            if (mounted) {
+              _showSnackBar(
+                'Presentación guardada, pero hubo un error al subir la imagen: $e',
+                Colors.orange.shade600,
+                Icons.warning_rounded,
+              );
+            }
+          }
+        } else if (_selectedImage != null) {
+          // Para móvil/desktop: usar File directamente
+          try {
+            await PresentationService.uploadPhoto(
+              savedPresentation.idPresentation!,
+              _selectedImage!,
+            );
+          } catch (e) {
+            if (mounted) {
+              _showSnackBar(
+                'Presentación guardada, pero hubo un error al subir la imagen: $e',
+                Colors.orange.shade600,
+                Icons.warning_rounded,
+              );
+            }
+          }
+        }
       }
 
       if (mounted) {
@@ -883,6 +940,30 @@ class _PresentationFormDialogState extends State<PresentationFormDialog>
     return 'Ingrediente ID: ${pi.id.idIngredient}';
   }
 
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      if (kIsWeb) {
+        // Para Flutter Web: leer como bytes
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+          _imageFileName = image.name;
+          _selectedImage = null; // Limpiar la imagen de archivo
+        });
+      } else {
+        // Para móvil/desktop: usar File
+        setState(() {
+          _selectedImage = File(image.path);
+          _webImage = null; // Limpiar los bytes web
+          _imageFileName = null;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -1393,6 +1474,168 @@ class _PresentationFormDialogState extends State<PresentationFormDialog>
             ),
             const SizedBox(height: 20),
 
+// REEMPLAZA ESTE BLOQUE COMPLETO en _buildInformationTab():
+// Desde "// ---------------- IMAGEN DE LA PRESENTACIÓN ----------------"
+// Hasta "// --------------------------------------------------------------"
+
+// ---------------- IMAGEN DE LA PRESENTACIÓN ----------------
+            _buildSectionTitle('Imagen de la Presentación'),
+
+            const SizedBox(height: 10),
+
+            Stack(
+              children: [
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
+                    height: 180,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: kIsWeb && _webImage != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _webImage!,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : !kIsWeb && _selectedImage != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  _selectedImage!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : _existingImageUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(
+                                      _existingImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.broken_image_rounded,
+                                                  size: 45,
+                                                  color: Colors.grey.shade400),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                "Error al cargar imagen",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      loadingBuilder:
+                                          (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                : null,
+                                            color: primaryOrange,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_photo_alternate_rounded,
+                                            size: 45,
+                                            color:
+                                                primaryOrange.withOpacity(0.6)),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          "Seleccionar Imagen",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Toca para elegir una foto",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                  ),
+                ),
+
+                // Botón para eliminar imagen (actualizado para incluir _webImage)
+                if (_selectedImage != null ||
+                    _webImage != null ||
+                    _existingImageUrl != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_rounded,
+                            color: Colors.white, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _selectedImage = null;
+                            _webImage = null;
+                            _imageFileName = null;
+                            _existingImageUrl = null;
+                          });
+                          _showSnackBar(
+                            'Imagen eliminada',
+                            Colors.green.shade600,
+                            Icons.check_circle_rounded,
+                          );
+                        },
+                        tooltip: 'Eliminar imagen',
+                        padding: const EdgeInsets.all(8),
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
             _buildSectionTitle('Precios'),
             _buildTextField(
               controller: _priceController,

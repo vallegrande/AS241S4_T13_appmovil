@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:as241s4_t13_appmovil/config/environment.dart';
 import 'package:as241s4_t13_appmovil/core/models/dishes/presentation.dart';
@@ -20,6 +21,142 @@ class PresentationService {
     }
 
     return headers;
+  }
+
+  static Future<String> uploadPhoto(int id, File imageFile) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/$id/upload-photo'),
+      );
+
+      if (AuthService.token != null) {
+        request.headers['Authorization'] = 'Bearer ${AuthService.token}';
+      }
+
+      var multipartFile = await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+      );
+      request.files.add(multipartFile);
+
+      if (kDebugMode) {
+        print('UPLOAD Photo - Presentation ID: $id');
+        print('File: ${imageFile.path}');
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (kDebugMode) {
+        print('UPLOAD Photo - Status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        try {
+          final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+          if (jsonResponse is Map && jsonResponse.containsKey('dishPhotoUrl')) {
+            return jsonResponse['dishPhotoUrl'];
+          }
+          return jsonResponse.toString();
+        } catch (e) {
+          return utf8.decode(response.bodyBytes);
+        }
+      } else if (response.statusCode == 404) {
+        throw NotFoundException('Presentación no encontrada');
+      } else if (response.statusCode == 403) {
+        throw Exception('No tiene permisos para subir fotos');
+      } else if (response.statusCode == 400) {
+        throw Exception('Archivo inválido o formato no soportado');
+      }
+
+      throw Exception('Error al subir foto: ${response.statusCode}');
+    } catch (e) {
+      if (kDebugMode) print('Error en uploadPhoto: $e');
+      rethrow;
+    }
+  }
+
+  static Future<String> uploadPhotoBytes(
+      int id, Uint8List bytes, String filename) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/$id/upload-photo'),
+      );
+
+      if (AuthService.token != null) {
+        request.headers['Authorization'] = 'Bearer ${AuthService.token}';
+      }
+
+      // Usar fromBytes en lugar de fromPath
+      var multipartFile = http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename,
+      );
+      request.files.add(multipartFile);
+
+      if (kDebugMode) {
+        print('UPLOAD Photo Bytes - Presentation ID: $id');
+        print('Filename: $filename');
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (kDebugMode) {
+        print('UPLOAD Photo - Status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        try {
+          final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+          if (jsonResponse is Map && jsonResponse.containsKey('dishPhotoUrl')) {
+            return jsonResponse['dishPhotoUrl'];
+          }
+          return jsonResponse.toString();
+        } catch (e) {
+          return utf8.decode(response.bodyBytes);
+        }
+      } else if (response.statusCode == 404) {
+        throw NotFoundException('Presentación no encontrada');
+      } else if (response.statusCode == 403) {
+        throw Exception('No tiene permisos para subir fotos');
+      } else if (response.statusCode == 400) {
+        throw Exception('Archivo inválido o formato no soportado');
+      }
+
+      throw Exception('Error al subir foto: ${response.statusCode}');
+    } catch (e) {
+      if (kDebugMode) print('Error en uploadPhotoBytes: $e');
+      rethrow;
+    }
+  }
+
+  static String getPhotoUrl(String? photoPath) {
+    if (photoPath == null || photoPath.isEmpty) {
+      return '';
+    }
+
+    // Si ya viene con http, retornar tal cual
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      return photoPath;
+    }
+
+    // Si solo viene el nombre del archivo "dish_1.png"
+    if (!photoPath.contains('/')) {
+      photoPath = '/uploads/dishes/$photoPath';
+    }
+
+    // Si viene "uploads/dishes/xxx.png"
+    if (!photoPath.startsWith('/')) {
+      photoPath = '/$photoPath';
+    }
+
+    return '${Environment.apiUrl}$photoPath';
   }
 
   static Future<Presentation> create(Presentation presentation) async {
@@ -228,4 +365,12 @@ class PresentationService {
       rethrow;
     }
   }
+}
+
+class NotFoundException implements Exception {
+  final String message;
+  NotFoundException(this.message);
+
+  @override
+  String toString() => message;
 }

@@ -77,8 +77,16 @@ class _CategoriesTabState extends State<CategoriesTab> {
       builder: (context) => CategoryFormDialog(
         category: category,
         onSaved: () {
-          _loadCategories();
-          Navigator.pop(context);
+          Navigator.pop(context); // Cierra el diálogo
+          _loadCategories(); // Recarga las categorías
+          // Mostrar el SnackBar desde aquí (después de cerrar el diálogo)
+          _showSnackBar(
+            category == null
+                ? 'Categoría creada exitosamente'
+                : 'Categoría actualizada exitosamente',
+            Colors.green.shade600,
+            Icons.check_circle_rounded,
+          );
         },
       ),
     );

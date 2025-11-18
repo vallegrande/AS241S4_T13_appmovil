@@ -20,8 +20,8 @@ class ProductsTab extends StatefulWidget {
 class _ProductsTabState extends State<ProductsTab> {
   List<Product> _products = [];
   List<Product> _filteredProducts = [];
-  Map<int, String> _productCategoryMap =
-      {}; // Mapa idProduct -> nombre categoría
+  Map<int, String> _productCategoryMap = {}; // idProduct -> nombre categoría
+  Map<int, int> _productCategoryIdMap = {}; // idProduct -> idCategory (NUEVO)
   bool _isLoading = true;
   String _searchQuery = '';
   String _statusFilter = 'all';
@@ -40,25 +40,26 @@ class _ProductsTabState extends State<ProductsTab> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      // Cargar categorías con productos anidados y productos completos en paralelo
       final results = await Future.wait([
-        CategoryService.getAllWithInactive(), // Trae productos dentro
-        ProductService
-            .getAllWithInactive(), // Trae todos los productos con presentaciones
+        CategoryService.getAllWithInactive(),
+        ProductService.getAllWithInactive(),
       ]);
 
       final categories = results[0] as List<Category>;
       final products = results[1] as List<Product>;
 
-      // Crear mapa de idProduct -> nombre de categoría
-      final Map<int, String> categoryMap = {};
+      // Crear ambos mapas: nombre Y id de categoría
+      final Map<int, String> categoryNameMap = {};
+      final Map<int, int> categoryIdMap = {}; // NUEVO
+
       for (var category in categories) {
         if (category.products != null) {
           for (var productData in category.products!) {
             if (productData is Map<String, dynamic>) {
               final productId = productData['idProduct'] as int?;
               if (productId != null) {
-                categoryMap[productId] = category.name;
+                categoryNameMap[productId] = category.name;
+                categoryIdMap[productId] = category.idCategory ?? 0; // NUEVO
               }
             }
           }
@@ -68,7 +69,8 @@ class _ProductsTabState extends State<ProductsTab> {
       if (!mounted) return;
       setState(() {
         _products = products;
-        _productCategoryMap = categoryMap;
+        _productCategoryMap = categoryNameMap;
+        _productCategoryIdMap = categoryIdMap; // NUEVO
         _applyFilters();
         _isLoading = false;
       });
@@ -99,10 +101,19 @@ class _ProductsTabState extends State<ProductsTab> {
   }
 
   void _showFormDialog({Product? product}) {
+    // Obtener el categoryId del mapa si estamos editando
+    int? categoryId;
+    if (product?.idProduct != null &&
+        _productCategoryIdMap.containsKey(product!.idProduct)) {
+      categoryId = _productCategoryIdMap[product.idProduct];
+      print('🔍 Product: ${product.name}, CategoryId from map: $categoryId');
+    }
+
     showDialog(
       context: context,
       builder: (context) => ProductFormDialog(
         product: product,
+        categoryId: categoryId, // PASAR EL ID DE CATEGORÍA
         onSaved: () => _loadProducts(),
       ),
     );
@@ -252,7 +263,6 @@ class _ProductsTabState extends State<ProductsTab> {
   }
 
   String _getCategoryName(Product product) {
-    // Buscar en el mapa usando el idProduct
     if (product.idProduct != null &&
         _productCategoryMap.containsKey(product.idProduct)) {
       return _productCategoryMap[product.idProduct]!;

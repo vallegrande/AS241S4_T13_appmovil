@@ -1,16 +1,16 @@
-// lib/features/customers/form_customer.dart
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+// lib/features/customers/customer_form.dart
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
+import 'package:as241s4_t13_appmovil/core/models/customer/customer_model.dart';
+import 'package:as241s4_t13_appmovil/core/services/customer/customer_service.dart';
+
 class CustomerForm extends StatefulWidget {
-  final dynamic customer; // Cambiar a CustomerModel cuando esté disponible
+  final Customer? customer;
   const CustomerForm({super.key, this.customer});
 
   @override
@@ -18,26 +18,22 @@ class CustomerForm extends StatefulWidget {
 }
 
 class _CustomerFormState extends State<CustomerForm> {
+  final CustomerService _customerService = CustomerService();
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
-  final _nombresController = TextEditingController();
-  final _apellidosController = TextEditingController();
-  final _documentoController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _documentNumberController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _companyController = TextEditingController();
-  final _notesController = TextEditingController();
 
   // Dropdowns
   String? _selectedDocumentType;
-  String? _selectedGender;
   String? _selectedCustomerType;
 
   bool _isLoading = false;
-  File? _imageFile;
-  Uint8List? _imageBytes;
   String? _errorMessage;
 
   bool get isEditing => widget.customer != null;
@@ -45,9 +41,8 @@ class _CustomerFormState extends State<CustomerForm> {
   final Color primaryOrange = const Color(0xFFFF6B35);
   final Color lightOrange = const Color(0xFFFF8C42);
 
-  final List<String> _documentTypes = ['DNI', 'CE', 'Pasaporte', 'RUC'];
-  final List<String> _genders = ['Masculino', 'Femenino', 'Otro'];
-  final List<String> _customerTypes = ['Individual', 'Empresa', 'Gobierno'];
+  final List<String> _documentTypes = ['DNI', 'CE', 'PASAPORTE', 'RUC'];
+  final List<String> _customerTypes = ['NATURAL', 'JURIDICO'];
 
   static const double _fieldHeight = 56.0;
 
@@ -61,45 +56,35 @@ class _CustomerFormState extends State<CustomerForm> {
 
   @override
   void dispose() {
-    _nombresController.dispose();
-    _apellidosController.dispose();
-    _documentoController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _documentNumberController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
-    _companyController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
   void _loadCustomerData() {
-    // TODO: Implementar carga de datos cuando el modelo esté disponible
-    // final customer = widget.customer;
-    // _nombresController.text = customer.name;
-    // etc...
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      if (kIsWeb) {
-        final bytes = await pickedFile.readAsBytes();
-        setState(() {
-          _imageBytes = bytes;
-          _imageFile = null;
-        });
-      } else {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-          _imageBytes = null;
-        });
-      }
-    }
+    final customer = widget.customer!;
+    _firstNameController.text = customer.firstName;
+    _lastNameController.text = customer.lastName;
+    _documentNumberController.text = customer.documentNumber;
+    _emailController.text = customer.email ?? '';
+    _phoneController.text = customer.phone;
+    _addressController.text = customer.address ?? '';
+    _selectedDocumentType = customer.documentType;
+    _selectedCustomerType = customer.customerType;
   }
 
   Future<void> _saveCustomer() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedDocumentType == null || _selectedCustomerType == null) {
+      _showErrorSnackBar(
+          'Debe seleccionar tipo de documento y tipo de cliente.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -107,9 +92,34 @@ class _CustomerFormState extends State<CustomerForm> {
     });
 
     try {
-      // TODO: Implementar guardado cuando el backend esté listo
-      // await _customerService.createCustomer(customer);
-      // await _customerService.updateCustomer(customer);
+      final customerToSave = Customer(
+        idCustomer: widget.customer?.idCustomer,
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim().isEmpty
+            ? null
+            : _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        documentType: _selectedDocumentType!,
+        documentNumber: _documentNumberController.text.trim(),
+        address: _addressController.text.trim().isEmpty
+            ? null
+            : _addressController.text.trim(),
+        customerType: _selectedCustomerType!,
+        state: widget.customer?.state ?? 1,
+        createdAt: widget.customer?.createdAt,
+      );
+
+      if (kDebugMode) {
+        print('📤 Enviando cliente: ${customerToSave.toJson()}');
+      }
+
+      if (isEditing) {
+        await _customerService.updateCustomer(
+            widget.customer!.idCustomer!, customerToSave);
+      } else {
+        await _customerService.createCustomer(customerToSave);
+      }
 
       if (!mounted) return;
       _showSuccessSnackBar(
@@ -176,38 +186,37 @@ class _CustomerFormState extends State<CustomerForm> {
     );
   }
 
-  String? _validateNombre(String? value) {
+  String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty)
       return 'Este campo es obligatorio';
     if (value.trim().length < 2) return 'Debe tener al menos 2 caracteres';
-    if (!RegExp(r'^[a-zA-Záéíóúñ\s]+$').hasMatch(value))
-      return 'Solo se permiten letras';
     return null;
   }
 
   String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'El email es obligatorio';
+    if (value == null || value.trim().isEmpty) return null; // Email opcional
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value))
       return 'Email inválido';
     return null;
   }
 
-  String? _validateDocumento(String? value, String? tipo) {
+  String? _validateDocument(String? value, String? type) {
     if (value == null || value.trim().isEmpty)
       return 'El documento es obligatorio';
-    if (tipo == 'DNI' && !RegExp(r'^\d{8}$').hasMatch(value))
+    if (type == 'DNI' && !RegExp(r'^\d{8}$').hasMatch(value))
       return 'DNI debe tener 8 dígitos';
-    if (tipo == 'CE' && !RegExp(r'^\d{9}$').hasMatch(value))
+    if (type == 'CE' && !RegExp(r'^\d{9}$').hasMatch(value))
       return 'CE debe tener 9 dígitos';
-    if (tipo == 'RUC' && !RegExp(r'^\d{11}$').hasMatch(value))
+    if (type == 'RUC' && !RegExp(r'^\d{11}$').hasMatch(value))
       return 'RUC debe tener 11 dígitos';
-    if (tipo == 'Pasaporte' && (value.length < 6 || value.length > 12))
+    if (type == 'PASAPORTE' && (value.length < 6 || value.length > 12))
       return 'Pasaporte entre 6-12 caracteres';
     return null;
   }
 
   String? _validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
+    if (value == null || value.trim().isEmpty)
+      return 'El teléfono es obligatorio';
     if (!RegExp(r'^\d{9}$').hasMatch(value))
       return 'Teléfono debe tener 9 dígitos';
     return null;
@@ -223,6 +232,7 @@ class _CustomerFormState extends State<CustomerForm> {
     int? maxLines = 1,
   }) {
     return SizedBox(
+      height: maxLines == 1 ? _fieldHeight : null,
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
@@ -251,13 +261,14 @@ class _CustomerFormState extends State<CustomerForm> {
           errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.red.shade400, width: 1)),
+          focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.red.shade600, width: 2)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           errorStyle: GoogleFonts.inter(fontSize: 12, height: 0.8),
         ),
-        validator: validator ??
-            (value) =>
-                (value == null || value.isEmpty) ? 'Campo obligatorio' : null,
+        validator: validator,
       ),
     );
   }
@@ -292,8 +303,15 @@ class _CustomerFormState extends State<CustomerForm> {
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: primaryOrange, width: 2)),
+          errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.red.shade400, width: 1)),
+          focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.red.shade600, width: 2)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          errorStyle: GoogleFonts.inter(fontSize: 12, height: 0.8),
         ),
         isExpanded: true,
         hint: Text('Seleccionar',
@@ -328,65 +346,6 @@ class _CustomerFormState extends State<CustomerForm> {
     );
   }
 
-  Widget _buildPhotoSection() {
-    return Center(
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                        color: primaryOrange.withOpacity(0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8))
-                  ]),
-              child: _imageFile != null || _imageBytes != null
-                  ? ClipOval(
-                      child: _imageFile != null
-                          ? Image.file(_imageFile!, fit: BoxFit.cover)
-                          : Image.memory(_imageBytes!, fit: BoxFit.cover))
-                  : Container(
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                              colors: [primaryOrange, lightOrange],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight)),
-                      child: const Icon(Icons.camera_alt_rounded,
-                          size: 40, color: Colors.white)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-                color: primaryOrange.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: primaryOrange.withOpacity(0.2))),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.touch_app_rounded, color: primaryOrange, size: 14),
-              const SizedBox(width: 6),
-              Text('Toca para cambiar foto',
-                  style: GoogleFonts.inter(
-                      color: primaryOrange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        ],
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 400.ms)
-        .scale(duration: 400.ms, curve: Curves.easeOutBack);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -412,43 +371,71 @@ class _CustomerFormState extends State<CustomerForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildPhotoSection(),
+              // Header con icono
+              Center(
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                          colors: [primaryOrange, lightOrange],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight),
+                      boxShadow: [
+                        BoxShadow(
+                            color: primaryOrange.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8))
+                      ]),
+                  child: const Icon(Icons.person_rounded,
+                      size: 50, color: Colors.white),
+                ),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms)
+                  .scale(duration: 400.ms, curve: Curves.easeOutBack),
               const SizedBox(height: 24),
               _buildTextField(
-                controller: _nombresController,
-                labelText: 'Nombres',
+                controller: _firstNameController,
+                labelText: 'Nombres *',
                 icon: Icons.person_rounded,
-                validator: _validateNombre,
+                validator: _validateName,
               ),
               const SizedBox(height: 16),
               _buildTextField(
-                controller: _apellidosController,
-                labelText: 'Apellidos',
+                controller: _lastNameController,
+                labelText: 'Apellidos *',
                 icon: Icons.person_outline_rounded,
-                validator: _validateNombre,
+                validator: _validateName,
               ),
               const SizedBox(height: 16),
               _buildDropdown<String>(
                 selectedValue: _selectedDocumentType,
                 items: _documentTypes,
-                labelText: 'Tipo de Documento',
+                labelText: 'Tipo de Documento *',
                 icon: Icons.credit_card_rounded,
                 itemLabel: (doc) => doc,
-                onChanged: (v) => setState(() => _selectedDocumentType = v),
+                onChanged: (v) {
+                  setState(() => _selectedDocumentType = v);
+                  _documentNumberController.clear();
+                },
               ),
               const SizedBox(height: 16),
               _buildTextField(
-                controller: _documentoController,
-                labelText: 'Número de Documento',
+                controller: _documentNumberController,
+                labelText: 'Número de Documento *',
                 icon: Icons.badge_rounded,
                 keyboardType: TextInputType.number,
-                validator: (v) => _validateDocumento(v, _selectedDocumentType),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: (v) => _validateDocument(v, _selectedDocumentType),
+                inputFormatters: _selectedDocumentType == 'PASAPORTE'
+                    ? null
+                    : [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _emailController,
-                labelText: 'Email',
+                labelText: 'Email (opcional)',
                 icon: Icons.email_rounded,
                 keyboardType: TextInputType.emailAddress,
                 validator: _validateEmail,
@@ -456,7 +443,7 @@ class _CustomerFormState extends State<CustomerForm> {
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _phoneController,
-                labelText: 'Teléfono',
+                labelText: 'Teléfono *',
                 icon: Icons.phone_rounded,
                 keyboardType: TextInputType.phone,
                 validator: _validatePhone,
@@ -468,44 +455,23 @@ class _CustomerFormState extends State<CustomerForm> {
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _addressController,
-                labelText: 'Dirección',
+                labelText: 'Dirección (opcional)',
                 icon: Icons.location_on_rounded,
-              ),
-              const SizedBox(height: 16),
-              _buildDropdown<String>(
-                selectedValue: _selectedGender,
-                items: _genders,
-                labelText: 'Género',
-                icon: Icons.wc_rounded,
-                itemLabel: (g) => g,
-                onChanged: (v) => setState(() => _selectedGender = v),
+                maxLines: 2,
               ),
               const SizedBox(height: 16),
               _buildDropdown<String>(
                 selectedValue: _selectedCustomerType,
                 items: _customerTypes,
-                labelText: 'Tipo de Cliente',
-                icon: Icons.business_rounded,
-                itemLabel: (t) => t,
+                labelText: 'Tipo de Cliente *',
+                icon: Icons.business_center_rounded,
+                itemLabel: (t) => t == 'NATURAL' ? 'Natural' : 'Jurídico',
                 onChanged: (v) => setState(() => _selectedCustomerType = v),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _companyController,
-                labelText: 'Empresa',
-                icon: Icons.domain_rounded,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _notesController,
-                labelText: 'Notas',
-                icon: Icons.note_rounded,
-                maxLines: 3,
               ),
               const SizedBox(height: 24),
             ],
           ),
-        ),
+        ).animate().fadeIn(duration: 300.ms),
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),

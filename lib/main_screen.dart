@@ -9,19 +9,20 @@ import 'package:as241s4_t13_appmovil/features/rol_department/panel_rolAndDeparta
 import 'package:as241s4_t13_appmovil/features/catalog/panel_catalog.dart';
 import 'package:as241s4_t13_appmovil/features/dashboard/dashboard_panel.dart';
 import 'package:as241s4_t13_appmovil/login/login_page.dart';
+import 'package:as241s4_t13_appmovil/features/table/panel_table.dart';
+import 'package:as241s4_t13_appmovil/features/orders/panel_order.dart';
 import 'package:as241s4_t13_appmovil/core/services/users/user_service.dart';
 import 'package:as241s4_t13_appmovil/core/services/auth/auth_service.dart';
 
 enum AppPage {
   home,
+  rolesDepartamentos,
   usuarios,
   clientes,
-  rolesDepartamentos,
   catalogo,
-  ventas,
-  pedidos,
   mesas,
-  config,
+  pedidos,
+  ventas,
 }
 
 class MainScreen extends StatefulWidget {
@@ -37,7 +38,6 @@ class _MainScreenState extends State<MainScreen>
   AppPage _currentPage = AppPage.home;
   late AnimationController _pageTransitionController;
 
-  // Configuración de items del menú con el nuevo modelo
   late final List<SidebarMenuItem> _menuItems;
 
   @override
@@ -48,10 +48,9 @@ class _MainScreenState extends State<MainScreen>
       duration: const Duration(milliseconds: 300),
     );
 
-    // CORRECCIÓN PARA LA OPACIDAD: Iniciar la animación al cargar la pantalla.
     _pageTransitionController.forward();
 
-    // Inicializar items del menú con badges de ejemplo
+    // Orden correcto del menú
     _menuItems = [
       const SidebarMenuItem(
         key: 'Home',
@@ -59,38 +58,27 @@ class _MainScreenState extends State<MainScreen>
         icon: Icons.dashboard_rounded,
       ),
       const SidebarMenuItem(
-        key: 'Usuarios',
-        title: 'Usuarios',
-        icon: Icons.people_alt_rounded,
-        badge: 5, // Ejemplo: 5 usuarios nuevos
-      ),
-      const SidebarMenuItem(
-        key: 'Clientes',
-        title: 'Clientes',
-        icon: Icons.business_center_rounded,
-        badge: 12, // Ejemplo: 12 clientes nuevos
-      ),
-      const SidebarMenuItem(
         key: 'Roles/Departamentos',
         title: 'Roles y Departamentos',
         icon: Icons.workspaces_outline,
       ),
       const SidebarMenuItem(
+        key: 'Usuarios',
+        title: 'Usuarios',
+        icon: Icons.people_alt_rounded,
+        badge: 5,
+      ),
+      const SidebarMenuItem(
+        key: 'Clientes',
+        title: 'Clientes',
+        icon: Icons.business_center_rounded,
+        badge: 12,
+      ),
+      const SidebarMenuItem(
         key: 'Catálogo',
         title: 'Catálogo',
         icon: Icons.storefront_rounded,
-        badge: 12, // Ejemplo: 12 productos nuevos
-      ),
-      const SidebarMenuItem(
-        key: 'Ventas',
-        title: 'Ventas',
-        icon: Icons.point_of_sale_rounded,
-      ),
-      const SidebarMenuItem(
-        key: 'Pedidos',
-        title: 'Pedidos',
-        icon: Icons.receipt_long_rounded,
-        badge: 3, // Ejemplo: 3 pedidos pendientes
+        badge: 12,
       ),
       const SidebarMenuItem(
         key: 'Mesas',
@@ -98,9 +86,15 @@ class _MainScreenState extends State<MainScreen>
         icon: Icons.table_bar_rounded,
       ),
       const SidebarMenuItem(
-        key: 'Config',
-        title: 'Configuración',
-        icon: Icons.settings_rounded,
+        key: 'Pedidos',
+        title: 'Pedidos',
+        icon: Icons.receipt_long_rounded,
+        badge: 3,
+      ),
+      const SidebarMenuItem(
+        key: 'Ventas',
+        title: 'Ventas',
+        icon: Icons.point_of_sale_rounded,
       ),
     ];
   }
@@ -114,27 +108,25 @@ class _MainScreenState extends State<MainScreen>
   // Mapeo de keys a páginas
   static const Map<String, AppPage> _pageMap = {
     'Home': AppPage.home,
+    'Roles/Departamentos': AppPage.rolesDepartamentos,
     'Usuarios': AppPage.usuarios,
     'Clientes': AppPage.clientes,
-    'Roles/Departamentos': AppPage.rolesDepartamentos,
     'Catálogo': AppPage.catalogo,
-    'Ventas': AppPage.ventas,
-    'Pedidos': AppPage.pedidos,
     'Mesas': AppPage.mesas,
-    'Config': AppPage.config,
+    'Pedidos': AppPage.pedidos,
+    'Ventas': AppPage.ventas,
   };
 
   // Mapeo inverso para obtener el key desde la página
   static const Map<AppPage, String> _pageToKeyMap = {
     AppPage.home: 'Home',
+    AppPage.rolesDepartamentos: 'Roles/Departamentos',
     AppPage.usuarios: 'Usuarios',
     AppPage.clientes: 'Clientes',
-    AppPage.rolesDepartamentos: 'Roles/Departamentos',
     AppPage.catalogo: 'Catálogo',
-    AppPage.ventas: 'Ventas',
-    AppPage.pedidos: 'Pedidos',
     AppPage.mesas: 'Mesas',
-    AppPage.config: 'Config',
+    AppPage.pedidos: 'Pedidos',
+    AppPage.ventas: 'Ventas',
   };
 
   void _toggleSidebar() {
@@ -146,8 +138,6 @@ class _MainScreenState extends State<MainScreen>
   void _handleMenuTap(String itemKey) {
     final page = _pageMap[itemKey];
     if (page != null && page != _currentPage) {
-      // Usar reverse y forward para la transición de página
-      // Esto asegura la animación de fade out y luego fade in.
       _pageTransitionController.reverse().then((_) {
         if (!mounted) return;
         setState(() {
@@ -157,7 +147,6 @@ class _MainScreenState extends State<MainScreen>
         _pageTransitionController.forward();
       });
     } else if (page == _currentPage) {
-      // Solo cerrar sidebar si selecciona la misma página
       setState(() {
         _isSidebarOpen = false;
       });
@@ -173,7 +162,7 @@ class _MainScreenState extends State<MainScreen>
         ),
         title: Row(
           children: const [
-            Icon(Icons.logout_rounded, color: Color(0xFFFF1100)),
+            Icon(Icons.logout_rounded, color: Color(0xFFFF6B35)),
             SizedBox(width: 12),
             Text('Cerrar Sesión'),
           ],
@@ -193,7 +182,7 @@ class _MainScreenState extends State<MainScreen>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF1100),
+              backgroundColor: const Color(0xFFFF6B35),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -212,12 +201,10 @@ class _MainScreenState extends State<MainScreen>
     );
 
     if (shouldLogout == true) {
-      // Limpiar contexto de autenticación
       AuthService.clearContext();
 
       if (!mounted) return;
 
-      // Navegar al login con animación
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
@@ -248,13 +235,13 @@ class _MainScreenState extends State<MainScreen>
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF1100).withOpacity(0.1),
+              color: const Color(0xFFFF6B35).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
               size: 80,
-              color: const Color(0xFFFF1100).withOpacity(0.6),
+              color: const Color(0xFFFF6B35).withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -299,22 +286,20 @@ class _MainScreenState extends State<MainScreen>
     switch (_currentPage) {
       case AppPage.home:
         return 'Dashboard';
+      case AppPage.rolesDepartamentos:
+        return 'Roles y Departamentos';
       case AppPage.usuarios:
         return 'Usuarios';
       case AppPage.clientes:
         return 'Clientes';
-      case AppPage.rolesDepartamentos:
-        return 'Roles y Departamentos';
       case AppPage.catalogo:
         return 'Catálogo';
-      case AppPage.ventas:
-        return 'Ventas';
-      case AppPage.pedidos:
-        return 'Pedidos';
       case AppPage.mesas:
         return 'Mesas';
-      case AppPage.config:
-        return 'Configuración';
+      case AppPage.pedidos:
+        return 'Pedidos';
+      case AppPage.ventas:
+        return 'Ventas';
     }
   }
 
@@ -322,33 +307,22 @@ class _MainScreenState extends State<MainScreen>
     switch (_currentPage) {
       case AppPage.home:
         return const DashboardPanel();
+      case AppPage.rolesDepartamentos:
+        return const PanelRolAndDepartament();
       case AppPage.usuarios:
         return const PanelUserScreen();
       case AppPage.clientes:
         return const PanelCustomerScreen();
-      case AppPage.rolesDepartamentos:
-        return const PanelRolAndDepartament();
       case AppPage.catalogo:
         return const PanelCatalogScreen();
+      case AppPage.mesas:
+        return const PanelTableScreen();
+      case AppPage.pedidos:
+        return const OrderPanel();
       case AppPage.ventas:
         return _buildPlaceholderContent(
           'Módulo de Ventas',
           Icons.point_of_sale_rounded,
-        );
-      case AppPage.pedidos:
-        return _buildPlaceholderContent(
-          'Módulo de Pedidos',
-          Icons.receipt_long_rounded,
-        );
-      case AppPage.mesas:
-        return _buildPlaceholderContent(
-          'Módulo de Mesas',
-          Icons.table_bar_rounded,
-        );
-      case AppPage.config:
-        return _buildPlaceholderContent(
-          'Configuración del Sistema',
-          Icons.settings_rounded,
         );
     }
   }
@@ -364,12 +338,10 @@ class _MainScreenState extends State<MainScreen>
           isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       body: Stack(
         children: [
-          // Contenido principal con transición
           AnimatedBuilder(
             animation: _pageTransitionController,
             builder: (context, child) {
               return FadeTransition(
-                // Usa el valor del controlador para la opacidad
                 opacity: _pageTransitionController,
                 child: SlideTransition(
                   position: Tween<Offset>(
@@ -385,7 +357,6 @@ class _MainScreenState extends State<MainScreen>
             },
             child: Column(
               children: [
-                // Header - aplica SafeArea aquí para que respete status bar
                 SafeArea(
                   bottom: false,
                   left: false,
@@ -396,16 +367,12 @@ class _MainScreenState extends State<MainScreen>
                     enableGlassEffect: true,
                   ),
                 ),
-
-                // Contenido de la página
                 Expanded(
                   child: _getPageContent(),
                 ),
               ],
             ),
           ),
-
-          // Sidebar con glassmorphism
           AppSidebar(
             isOpen: _isSidebarOpen,
             selectedItem: selectedItemKey,
@@ -425,7 +392,6 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
-  // Métodos para obtener información del usuario
   String _getUserName() {
     return 'Carlo';
   }

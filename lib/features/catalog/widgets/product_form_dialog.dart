@@ -13,11 +13,13 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 class ProductFormDialog extends StatefulWidget {
   final Product? product;
   final VoidCallback onSaved;
+  final int? categoryId; // NUEVO: recibir el ID de categoría
 
   const ProductFormDialog({
     super.key,
     this.product,
     required this.onSaved,
+    this.categoryId, // NUEVO
   });
 
   @override
@@ -51,6 +53,14 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       _nameController.text = widget.product!.name;
       _descriptionController.text = widget.product!.description ?? '';
       _state = widget.product!.state;
+
+      // DEBUG: Imprimir lo que viene en el producto
+      print('========== DEBUG PRODUCT ==========');
+      print('Product ID: ${widget.product!.idProduct}');
+      print('Product Name: ${widget.product!.name}');
+      print('Product Category Field: ${widget.product!.category}');
+      print('CategoryId passed: ${widget.categoryId}');
+      print('===================================');
     }
 
     _loadCategories();
@@ -123,6 +133,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     if (_isLoadingCategories || _isLoadingDepartments) return;
 
     setState(() {
+      // Configurar departamento
       if (_departments.isNotEmpty && _selectedDepartment == null) {
         final deptId = widget.product?.department?['id'];
         _selectedDepartment = deptId != null
@@ -133,14 +144,37 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
             : _departments.first;
       }
 
+      // Configurar categoría - USAR EL categoryId PASADO COMO PARÁMETRO
       if (_categories.isNotEmpty && _selectedCategory == null) {
-        final catId = widget.product?.category?['idCategory'];
-        _selectedCategory = catId != null
-            ? _categories.firstWhere(
-                (c) => c.idCategory == catId,
-                orElse: () => _categories.first,
-              )
-            : _categories.first;
+        int? categoryIdToUse;
+
+        // Prioridad 1: Usar categoryId pasado explícitamente
+        if (widget.categoryId != null) {
+          categoryIdToUse = widget.categoryId;
+          print('Using categoryId from parameter: $categoryIdToUse');
+        }
+        // Prioridad 2: Intentar obtener del campo category del producto
+        else if (widget.product?.category?['idCategory'] != null) {
+          categoryIdToUse = widget.product!.category!['idCategory'] as int?;
+          print('Using categoryId from product.category: $categoryIdToUse');
+        }
+
+        if (categoryIdToUse != null) {
+          try {
+            _selectedCategory = _categories.firstWhere(
+              (c) => c.idCategory == categoryIdToUse,
+            );
+            print(
+                'Found category: ${_selectedCategory?.name} (ID: ${_selectedCategory?.idCategory})');
+          } catch (e) {
+            print('Category not found for ID: $categoryIdToUse');
+            _selectedCategory = _categories.first;
+          }
+        } else {
+          // Para productos nuevos o si no hay categoría
+          _selectedCategory = _categories.first;
+          print('Using first category as default: ${_selectedCategory?.name}');
+        }
       }
     });
   }

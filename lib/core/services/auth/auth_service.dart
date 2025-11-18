@@ -37,32 +37,48 @@ class LoginResponse {
 class AuthService {
   static String? _token;
   static String? _role;
+  static String? _email;
+  static int? _userId;
   static List<String> _authorities = [];
 
   static String? get token => _token;
   static String? get role => _role;
+  static String? get email => _email;
+  static int? get userId => _userId;
   static List<String> get authorities => _authorities;
 
-  static void _setContext(String token, String role,
-      {List<String> authorities = const []}) {
+  static void _setContext(
+    String token,
+    String role,
+    String email, {
+    int? userId,
+    List<String> authorities = const [],
+  }) {
     _token = token;
     _role = role;
+    _email = email;
+    _userId = userId;
     _authorities = authorities;
     if (kDebugMode) {
-      print('Token almacenado');
-      print('Role: $_role');
-      print('Authorities: $_authorities');
+      print('✅ Contexto de autenticación establecido:');
+      print('   Email: $_email');
+      print('   Role: $_role');
+      print('   UserId: $_userId');
+      print('   Authorities: $_authorities');
     }
   }
 
   static void clearContext() {
     _token = null;
     _role = null;
+    _email = null;
+    _userId = null;
     _authorities = [];
-    if (kDebugMode) print('Autenticación limpiada (Logout).');
+    if (kDebugMode) print('🔓 Autenticación limpiada (Logout).');
   }
 
   final String _loginUrl = "${Environment.apiUrl}/api/auth/login";
+  final String _usersUrl = "${Environment.apiUrl}/v1/api/users";
 
   Future<LoginResponse> login(String email, String password) async {
     final response = await http.post(
@@ -88,6 +104,7 @@ class AuthService {
 
         final payload = _decodeJwt(token);
         final role = (payload['role'] as String?)?.toUpperCase() ?? 'USER';
+        final emailFromToken = payload['sub'] as String? ?? email;
 
         List<String> authorities = [];
 
@@ -103,7 +120,23 @@ class AuthService {
           }
         }
 
-        AuthService._setContext(token, role, authorities: authorities);
+        // Obtener el ID del usuario mediante su email
+        int? userId;
+        try {
+          userId = await _getUserIdByEmail(emailFromToken, token);
+          if (kDebugMode) print('✅ UserId obtenido: $userId');
+        } catch (e) {
+          if (kDebugMode)
+            print('⚠️ Error al obtener userId, continuando sin él: $e');
+        }
+
+        AuthService._setContext(
+          token,
+          role,
+          emailFromToken,
+          userId: userId,
+          authorities: authorities,
+        );
 
         return LoginResponse(
           success: true,
@@ -118,9 +151,59 @@ class AuthService {
         return LoginResponse(success: false, message: errorMessage);
       }
     } catch (e) {
-      if (kDebugMode) print('Error de Login: $e');
+      if (kDebugMode) print('❌ Error de Login: $e');
       return LoginResponse(
           success: false, message: 'Error de conexión o token inválido.');
+    }
+  }
+
+  /// Método privado para obtener el ID del usuario por email
+  /// Lista todos los usuarios con GET /v1/api/users y busca por email
+  Future<int> _getUserIdByEmail(String email, String token) async {
+    if (kDebugMode) print('🔍 Buscando usuario por email: $email');
+
+    final response = await http.get(
+      Uri.parse(_usersUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> users = json.decode(response.body);
+
+      if (kDebugMode) print('📋 Total usuarios obtenidos: ${users.length}');
+
+      // Buscar el usuario por email
+      for (var userData in users) {
+        final userEmail = userData['email'] as String?;
+
+        if (userEmail != null &&
+            userEmail.toLowerCase() == email.toLowerCase()) {
+          // Intentar obtener idUser o id_user del JSON
+          final userId = userData['idUser'] ?? userData['id_user'];
+
+          if (userId == null) {
+            throw Exception(
+                'El usuario encontrado no tiene ID en la respuesta');
+          }
+
+          if (kDebugMode) {
+            print('✅ Usuario encontrado:');
+            print('   Email: $userEmail');
+            print('   ID: $userId');
+          }
+
+          return userId as int;
+        }
+      }
+
+      // Si no se encontró el usuario
+      throw NotFoundException('Usuario no encontrado con email: $email');
+    } else {
+      throw Exception(
+          'Error al obtener usuarios: ${response.statusCode} - ${response.body}');
     }
   }
 
@@ -155,7 +238,7 @@ Map<String, dynamic> _decodeJwt(String token) {
       json.decode(utf8.decode(base64Url.decode(normalizedPayload)));
 
   if (kDebugMode) {
-    print('JWT Payload decodificado:');
+    print('🔐 JWT Payload decodificado:');
     print(const JsonEncoder.withIndent('  ').convert(decodedPayload));
   }
 

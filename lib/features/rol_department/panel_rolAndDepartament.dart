@@ -329,81 +329,107 @@ class _PanelRolAndDepartamentState extends State<PanelRolAndDepartament>
   Widget build(BuildContext context) {
     final items = _currentEntity == EntityType.role ? _roles : _departments;
 
-    return Column(
-      children: [
-        _buildHeader(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              _buildTabButton(EntityType.role, 'Roles', Icons.badge_rounded),
-              _buildTabButton(EntityType.department, 'Departamentos',
-                  Icons.business_rounded),
-            ],
+    return Scaffold(
+      backgroundColor: surfaceBg,
+      body: Column(
+        children: [
+          _buildHeader(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildTabButton(EntityType.role, 'Roles', Icons.badge_rounded),
+                _buildTabButton(EntityType.department, 'Departamentos',
+                    Icons.business_rounded),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.shade300),
+              ),
+              child: Row(children: [
+                Icon(Icons.error_rounded, color: Colors.red.shade700),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Text(_error!,
+                        style: GoogleFonts.inter(color: Colors.red.shade800))),
+              ]),
+            ).animate().shake().fadeIn(),
+          Expanded(
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(color: primaryOrange)
+                        .animate()
+                        .scale()
+                        .shimmer())
+                : items.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _currentEntity == EntityType.role
+                                  ? Icons.badge_outlined
+                                  : Icons.business_outlined,
+                              size: 80,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No hay ${entityName.toLowerCase()}s',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey.shade700),
+                            ),
+                            const SizedBox(height: 8),
+                            Text('Crea uno nuevo con el botón +',
+                                style: GoogleFonts.inter(
+                                    color: Colors.grey.shade500)),
+                          ],
+                        ).animate().fadeIn().scale(curve: Curves.easeOutBack),
+                      )
+                    : AnimationLimiter(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 100),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) =>
+                              _buildEntityCard(items[index], index),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+      floatingActionButton: ScaleTransition(
+        scale: _fabController,
+        child: FloatingActionButton.extended(
+          onPressed: _goToForm,
+          backgroundColor: primaryOrange,
+          foregroundColor: Colors.white,
+          elevation: 8,
+          icon: Icon(
+            _currentEntity == EntityType.role
+                ? Icons.badge_rounded
+                : Icons.business_rounded,
+            size: 24,
+          ),
+          label: Text(
+            'Nuevo $entityName',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: Colors.white,
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        if (_error != null)
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.red.shade300),
-            ),
-            child: Row(children: [
-              Icon(Icons.error_rounded, color: Colors.red.shade700),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: Text(_error!,
-                      style: GoogleFonts.inter(color: Colors.red.shade800))),
-            ]),
-          ).animate().shake().fadeIn(),
-        Expanded(
-          child: _isLoading
-              ? Center(
-                  child: CircularProgressIndicator(color: primaryOrange)
-                      .animate()
-                      .scale()
-                      .shimmer())
-              : items.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _currentEntity == EntityType.role
-                                ? Icons.badge_outlined
-                                : Icons.business_outlined,
-                            size: 80,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No hay ${entityName.toLowerCase()}s',
-                            style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.grey.shade700),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('Crea uno nuevo con el botón +',
-                              style: GoogleFonts.inter(
-                                  color: Colors.grey.shade500)),
-                        ],
-                      ).animate().fadeIn().scale(curve: Curves.easeOutBack),
-                    )
-                  : AnimationLimiter(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        itemCount: items.length,
-                        itemBuilder: (context, index) =>
-                            _buildEntityCard(items[index], index),
-                      ),
-                    ),
-        ),
-      ],
+      ),
     );
   }
 }
