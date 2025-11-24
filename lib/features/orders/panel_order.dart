@@ -10,6 +10,7 @@ import 'package:as241s4_t13_appmovil/core/models/dishes/presentation.dart';
 import 'package:as241s4_t13_appmovil/core/models/table/table_model.dart';
 import 'package:as241s4_t13_appmovil/core/services/order/order_service.dart';
 import 'package:as241s4_t13_appmovil/core/services/auth/auth_service.dart';
+import 'package:as241s4_t13_appmovil/core/services/order/orderDetail_service.dart';
 import 'package:intl/intl.dart';
 import 'modal_customer.dart';
 import 'modal_presentations.dart';
@@ -29,6 +30,7 @@ class _OrderPanelState extends State<OrderPanel>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final OrderService _orderService = OrderService();
+  final OrderDetailService _orderDetailService = OrderDetailService();
   final Color primaryOrange = const Color(0xFFFF6B35);
   final Color lightOrange = const Color(0xFFFF8C42);
   final Color accentOrange = const Color(0xFFFFA556);
@@ -477,7 +479,10 @@ class _OrderPanelState extends State<OrderPanel>
               children: [
                 _buildCreateOrderTab(),
                 CookOrdersView(orderService: _orderService),
-                WaiterOrdersView(orderService: _orderService),
+                WaiterOrdersView(
+                  orderService: _orderService,
+                  orderDetailService: _orderDetailService,
+                ),
                 AllOrdersView(orderService: _orderService),
               ],
             ),

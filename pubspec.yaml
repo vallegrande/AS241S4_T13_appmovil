@@ -75,3 +75,9 @@ flutter:
     - assets/sidebar/
     - assets/card_user/
     - assets/formUser/
+    - assets/icon/
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
