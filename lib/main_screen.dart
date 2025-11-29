@@ -13,6 +13,8 @@ import 'package:as241s4_t13_appmovil/features/table/panel_table.dart';
 import 'package:as241s4_t13_appmovil/features/orders/panel_order.dart';
 import 'package:as241s4_t13_appmovil/core/services/users/user_service.dart';
 import 'package:as241s4_t13_appmovil/core/services/auth/auth_service.dart';
+import 'package:as241s4_t13_appmovil/features/sales/panel_sales.dart';
+
 
 enum AppPage {
   home,
@@ -320,10 +322,7 @@ class _MainScreenState extends State<MainScreen>
       case AppPage.pedidos:
         return const OrderPanel();
       case AppPage.ventas:
-        return _buildPlaceholderContent(
-          'Módulo de Ventas',
-          Icons.point_of_sale_rounded,
-        );
+        return const PanelSales();
     }
   }
 
