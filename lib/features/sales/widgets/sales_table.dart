@@ -44,7 +44,56 @@ class _SalesTableState extends State<SalesTable> {
     }
   }
 
+  // MÉTODO HELPER PARA EXTRAER NOMBRE DE PEDIDO
+  String _extractOrderCustomerName(Order order) {
+    try {
+      // Prioridad 1: fullName del customer
+      if (order.customer?.fullName != null) {
+        final name = order.customer!.fullName.toString().trim();
+        if (name.isNotEmpty && name != 'null') return name;
+      }
+      
+      // Prioridad 2: firstName + lastName
+      if (order.customer?.firstName != null) {
+        final firstName = order.customer!.firstName.toString().trim();
+        final lastName = order.customer!.lastName?.toString().trim() ?? '';
+        if (firstName.isNotEmpty && firstName != 'null') {
+          return '$firstName $lastName'.trim();
+        }
+      }
+      
+      // Último recurso: ID del cliente (NUNCA "Cliente Mostrador")
+      final customerId = order.idCustomer ?? order.customer?.idCustomer ?? '?';
+      return 'Cliente #$customerId';
+      
+    } catch (e) {
+      final customerId = order.idCustomer?.toString() ?? '?';
+      return 'Cliente #$customerId';
+    }
+  }
+
+  // MÉTODO HELPER PARA EXTRAER NOMBRE DE VENTA
+  String _extractSaleCustomerName(Sale sale) {
+    try {
+      // Prioridad 1: customerName de Sale
+      if (sale.customerName != null) {
+        final name = sale.customerName.toString().trim();
+        if (name.isNotEmpty && name != 'null') return name;
+      }
+      
+      // Último recurso: ID del cliente
+      final customerId = sale.idCustomer ?? '?';
+      return 'Cliente #$customerId';
+      
+    } catch (e) {
+      final customerId = sale.idCustomer?.toString() ?? '?';
+      return 'Cliente #$customerId';
+    }
+  }
+
   Future<void> _loadPendingOrders() async {
+    if (!mounted) return;
+
     try {
       setState(() {
         _isLoadingOrders = true;
@@ -52,8 +101,11 @@ class _SalesTableState extends State<SalesTable> {
       });
       
       print('🔄 Cargando pedidos entregados...');
+      // Obtenemos los pedidos con estado ENTREGADO para cobrarlos
       final orders = await OrderService().getOrdersByStatus('ENTREGADO');
       
+      if (!mounted) return;
+
       setState(() {
         _pendingOrders = orders;
         _isLoadingOrders = false;
@@ -61,6 +113,8 @@ class _SalesTableState extends State<SalesTable> {
       
       print('✅ Pedidos entregados cargados: ${orders.length}');
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isLoadingOrders = false;
         _ordersErrorMessage = 'Error al cargar pedidos: $e';
@@ -91,13 +145,9 @@ class _SalesTableState extends State<SalesTable> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Error message
           if (errorMessage.isNotEmpty) _buildErrorWidget(errorMessage),
-          // Header de la tabla
           _buildTableHeader(),
-          // Loading state
           if (isLoading) _buildLoadingState(),
-          // Lista de items
           if (!isLoading && data.isEmpty && errorMessage.isEmpty) _buildEmptyState(),
           if (!isLoading && data.isNotEmpty) ..._buildTableRows(data),
         ],
@@ -162,7 +212,7 @@ class _SalesTableState extends State<SalesTable> {
               ),
             ),
           ),
-          const Expanded(flex: 1, child: SizedBox()), // Espacio para acciones
+          const Expanded(flex: 1, child: SizedBox()),
         ],
       ),
     );
@@ -177,7 +227,7 @@ class _SalesTableState extends State<SalesTable> {
   }
 
   Widget _buildPendingOrderRow(Order order) {
-    final customerName = order.customer?.fullName ?? 'Cliente Mostrador';
+    final displayName = _extractOrderCustomerName(order);
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -200,7 +250,7 @@ class _SalesTableState extends State<SalesTable> {
           Expanded(
             flex: 3,
             child: Text(
-              customerName,
+              displayName,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -240,67 +290,70 @@ class _SalesTableState extends State<SalesTable> {
     );
   }
 
-  Widget _buildSaleRow(Sale sale) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              '#${sale.idSale}',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: darkText,
-              ),
+Widget _buildSaleRow(Sale sale) {
+  // Usar customerName directamente (ya viene con el nombre real)
+  final displayName = sale.customerName ?? 'Cliente #${sale.idCustomer}';
+  
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            '#${sale.idSale}',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: darkText,
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              sale.customerName,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade800,
-              ),
-              overflow: TextOverflow.ellipsis,
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            displayName, // ← ESTO DEBE MOSTRAR EL NOMBRE REAL
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade800,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Text(
+            sale.formattedTotal,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: darkText,
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              sale.formattedTotal,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: darkText,
-              ),
+        ),
+        Expanded(
+          flex: 2,
+          child: _buildSaleStatusBadge(sale),
+        ),
+        Expanded(
+          flex: 1,
+          child: IconButton(
+            icon: Icon(
+              Icons.visibility_rounded,
+              color: primaryOrange,
+              size: 20,
             ),
+            onPressed: () => _openDetailModal(sale),
           ),
-          Expanded(
-            flex: 2,
-            child: _buildSaleStatusBadge(sale),
-          ),
-          Expanded(
-            flex: 1,
-            child: IconButton(
-              icon: Icon(
-                Icons.visibility_rounded,
-                color: primaryOrange,
-                size: 20,
-              ),
-              onPressed: () => _openDetailModal(sale),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildOrderStatusBadge(String status) {
     Color backgroundColor;
@@ -323,7 +376,7 @@ class _SalesTableState extends State<SalesTable> {
         textColor = Colors.blue.shade700;
         text = 'PENDIENTE';
         break;
-      case 'PREPARACION':
+      case 'EN_PREPARACION':
         backgroundColor = Colors.purple.withOpacity(0.1);
         textColor = Colors.purple.shade700;
         text = 'PREPARACIÓN';
@@ -453,24 +506,68 @@ class _SalesTableState extends State<SalesTable> {
     );
   }
 
-  // --- MÉTODO ACTUALIZADO ---
   void _openPaymentModal(Order order) {
-    showModalBottomSheet(
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => PaymentModal(
+      order: order,
+      onPaymentSuccess: () async {
+        print('🔄 Recargando datos después de pago exitoso...');
+        
+        // Mostrar mensaje de carga
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                SizedBox(width: 12),
+                Text('Actualizando ventas...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        if (widget.isPending) {
+          await _loadPendingOrders(); // Recargar pedidos pendientes
+        }
+        
+        // Llamar al onRefresh que viene del padre
+        widget.onRefresh();
+        
+        // Forzar un rebuild
+        if (mounted) {
+          setState(() {});
+        }
+        
+        // Mostrar mensaje de éxito
+        Future.delayed(Duration(milliseconds: 500), () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ventas actualizadas correctamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        });
+      },
+    ),
+  );
+}
+
+  void _openDetailModal(Sale sale) async {
+    final bool? result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => PaymentModal(
-        order: order,
-        onPaymentSuccess: () {
-          print('🔄 Recargando datos después de pago exitoso...');
-          // Recargar tanto pedidos como ventas después del pago exitoso
-          if (widget.isPending) {
-            _loadPendingOrders();
-          }
-          widget.onRefresh(); // Esto recargará las ventas en la otra pestaña
-        },
-      ),
+      builder: (context) => SaleDetailModal(sale: sale),
     );
+
+    if (result == true) {
+      widget.onRefresh();
+    }
   }
 
   Widget _buildErrorWidget(String errorMessage) {
@@ -528,15 +625,6 @@ class _SalesTableState extends State<SalesTable> {
           ),
         ],
       ),
-    );
-  }
-
-  void _openDetailModal(Sale sale) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SaleDetailModal(sale: sale),
     );
   }
 }

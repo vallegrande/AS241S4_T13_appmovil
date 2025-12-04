@@ -46,8 +46,44 @@ class _PaymentModalState extends State<PaymentModal> {
     _calculateChange();
   }
 
+  // MÉTODO HELPER MEJORADO PARA EXTRAER NOMBRE DEL CLIENTE
+  String _extractCustomerName(dynamic order) {
+  try {
+    // Prioridad 1: fullName directo del customer
+    if (order.customer != null && order.customer.fullName != null) {
+      final name = order.customer.fullName.toString().trim();
+      if (name.isNotEmpty && name != 'null') return name;
+    }
+    
+    // Prioridad 2: Construir nombre desde firstName y lastName
+    if (order.customer != null && order.customer.firstName != null) {
+      final firstName = order.customer.firstName.toString().trim();
+      final lastName = order.customer.lastName?.toString().trim() ?? '';
+      if (firstName.isNotEmpty && firstName != 'null') {
+        return '$firstName $lastName'.trim();
+      }
+    }
+    
+    // Prioridad 3: Usar customerName si existe en el modelo Order
+    if (order.customerName != null) {
+      final name = order.customerName.toString().trim();
+      if (name.isNotEmpty && name != 'null') return name;
+    }
+    
+    // Último recurso: ID del cliente (NUNCA "Cliente Mostrador")
+    final customerId = order.idCustomer ?? order.customer?.idCustomer ?? 'N/A';
+    return 'Cliente #$customerId';
+    
+  } catch (e) {
+    final customerId = order.idCustomer?.toString() ?? 'N/A';
+    return 'Cliente #$customerId';
+  }
+}
+
   @override
   Widget build(BuildContext context) {
+    final customerName = _extractCustomerName(order);
+    
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: const BoxDecoration(
@@ -67,8 +103,8 @@ class _PaymentModalState extends State<PaymentModal> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Resumen del pedido
-                  _buildOrderSummary(),
+                  // Resumen del pedido con nombre REAL del cliente
+                  _buildOrderSummary(customerName),
                   const SizedBox(height: 20),
                   // Métodos de pago
                   _buildPaymentMethods(),
@@ -131,20 +167,7 @@ class _PaymentModalState extends State<PaymentModal> {
     );
   }
 
-  Widget _buildOrderSummary() {
-    String customerName = 'Cliente Mostrador';
-    try {
-      if (order.customer != null) {
-        if (order.customer.fullName != null) {
-          customerName = order.customer.fullName;
-        } else if (order.customer.firstName != null) {
-          customerName = '${order.customer.firstName} ${order.customer.lastName ?? ""}';
-        }
-      }
-    } catch (e) {
-      // Fallback silencioso si falla el acceso a propiedades del cliente
-    }
-    
+  Widget _buildOrderSummary(String customerName) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -206,14 +229,14 @@ class _PaymentModalState extends State<PaymentModal> {
             ],
           ),
           const SizedBox(height: 12),
-          // Información del pedido
+          // Información del pedido con nombre REAL del cliente
           Row(
             children: [
               Icon(Icons.person_rounded, size: 16, color: Colors.grey.shade600),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  customerName,
+                  customerName, // Usar nombre extraído
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: Colors.grey.shade700,
@@ -234,7 +257,6 @@ class _PaymentModalState extends State<PaymentModal> {
     );
   }
 
-  // --- CORRECCIÓN PRINCIPAL AQUÍ ---
   Widget _buildOrderItem(dynamic item) {
     String productName = 'Producto #${item.idPresentation}';
     double subtotal = 0.0;
@@ -627,66 +649,84 @@ class _PaymentModalState extends State<PaymentModal> {
 
     setState(() => _isLoading = true);
 
+  try {
+    // Crear request para la venta
+    final saleRequest = CreateSaleRequest(
+      idOrder: order.idOrder,
+      idCustomer: order.idCustomer ?? order.customer?.idCustomer,
+      idUser: AuthService.userId ?? 1, // Usar el usuario autenticado
+      paymentType: _selectedPaymentType,
+      cashReceived: _selectedPaymentType == 'EFECTIVO' ? _cashReceived : null,
+      cashChange: _selectedPaymentType == 'EFECTIVO' ? _cashChange : null,
+      cardLast4: _selectedPaymentType == 'TARJETA' ? _cardLast4Controller.text : null,
+      cardOperation: _selectedPaymentType == 'TARJETA' ? _cardOperationController.text : null,
+      phonePayment: (_selectedPaymentType == 'YAPE' || _selectedPaymentType == 'PLIN') 
+          ? _phoneController.text : null,
+      transactionCode: (_selectedPaymentType == 'YAPE' || _selectedPaymentType == 'PLIN') 
+          ? _transactionController.text : null,
+      bankName: _selectedPaymentType == 'TRANSFERENCIA' ? _bankNameController.text : null,
+      bankOperation: _selectedPaymentType == 'TRANSFERENCIA' ? _bankOperationController.text : null,
+    );
+
+    print('🔄 Creando venta para pedido #${order.idOrder}');
+    print('📋 Datos de la venta:');
+    print('   - ID Order: ${order.idOrder}');
+    print('   - ID Customer: ${order.idCustomer}');
+    print('   - ID User: ${AuthService.userId}');
+    print('   - Método de pago: $_selectedPaymentType');
+    print('   - Total: ${order.total}');
+    
+    // Crear la venta
+    final sale = await SaleService.createSale(saleRequest);
+    
+    print('✅ VENTA CREADA EXITOSAMENTE:');
+    print('   - ID Venta: #${sale.idSale}');
+    print('   - Cliente: ${sale.displayCustomerName}');
+    print('   - Total: ${sale.formattedTotal}');
+    print('   - Fecha: ${sale.formattedDate}');
+    print('   - Estado: ${sale.isActive ? "CERRADA" : "ANULADA"}');
+    print('   - ID Order asociado: ${sale.idOrder}');
+
+    // Cerrar el pedido cambiando su estado a "CERRADO"
     try {
-      // Crear request para la venta
-      final saleRequest = CreateSaleRequest(
-        idOrder: order.idOrder,
-        idCustomer: order.customer?.idCustomer ?? order.idCustomer,
-        idUser: AuthService.userId ?? 1, // Usar el usuario autenticado
-        paymentType: _selectedPaymentType,
-        cashReceived: _selectedPaymentType == 'EFECTIVO' ? _cashReceived : null,
-        cashChange: _selectedPaymentType == 'EFECTIVO' ? _cashChange : null,
-        cardLast4: _selectedPaymentType == 'TARJETA' ? _cardLast4Controller.text : null,
-        cardOperation: _selectedPaymentType == 'TARJETA' ? _cardOperationController.text : null,
-        phonePayment: (_selectedPaymentType == 'YAPE' || _selectedPaymentType == 'PLIN') 
-            ? _phoneController.text : null,
-        transactionCode: (_selectedPaymentType == 'YAPE' || _selectedPaymentType == 'PLIN') 
-            ? _transactionController.text : null,
-        bankName: _selectedPaymentType == 'TRANSFERENCIA' ? _bankNameController.text : null,
-        bankOperation: _selectedPaymentType == 'TRANSFERENCIA' ? _bankOperationController.text : null,
-      );
-
-      print('🔄 Creando venta para pedido #${order.idOrder}');
-      
-      // Crear la venta
-      final sale = await SaleService.createSale(saleRequest);
-      
-      print('✅ Venta creada exitosamente: #${sale.idSale}');
-
-      // Cerrar el pedido cambiando su estado a "CERRADO"
-      try {
-        await OrderService().updateOrderStatus(order.idOrder, 'CERRADO');
-        print('✅ Pedido #${order.idOrder} cerrado exitosamente');
-      } catch (e) {
-        print('⚠️ Venta creada pero error al cerrar pedido: $e');
-        // Continuamos aunque falle el cierre del pedido para no bloquear al usuario
-      }
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        
-        // Mostrar éxito
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Venta #${sale.idSale} creada exitosamente'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        
-        // Llamar callback de éxito y cerrar
-        widget.onPaymentSuccess?.call();
-        Navigator.pop(context);
-      }
-
+      await OrderService().updateOrderStatus(order.idOrder, 'CERRADO');
+      print('✅ Pedido #${order.idOrder} cerrado exitosamente');
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showError('Error al procesar pago: $e');
-      }
-      print('❌ Error al crear venta: $e');
+      print('⚠️ Venta creada pero error al cerrar pedido: $e');
+      // Continuamos aunque falle el cierre del pedido para no bloquear al usuario
+    }
+
+    if (mounted) {
+  setState(() => _isLoading = false);
+  
+  // Mostrar mensaje de éxito
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('✅ Venta #${sale.idSale} creada exitosamente'),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 2),
+    ),
+  );
+  
+  // Cerrar el modal inmediatamente
+  Navigator.pop(context);
+  
+  // Llamar al callback para refrescar las ventas
+  widget.onPaymentSuccess?.call();
+}
+
+  } catch (e) {
+    print('❌ ERROR DETALLADO al crear venta:');
+    print('   Tipo de error: ${e.runtimeType}');
+    print('   Mensaje: $e');
+    print('   Stack trace: ${e.toString()}');
+    
+    if (mounted) {
+      setState(() => _isLoading = false);
+      _showError('Error al procesar pago: ${e.toString()}');
     }
   }
+}
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(

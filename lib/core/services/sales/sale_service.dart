@@ -249,13 +249,101 @@ class SaleService {
 
   // Helper para procesar listas de ventas
   static List<Sale> _processListResponse(http.Response response) {
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonData = json.decode(response.body);
-      return jsonData.map((json) => Sale.fromJson(json)).toList();
-    } else if (response.statusCode == 403) {
-      throw Exception('Acceso denegado.');
-    } else {
-      throw Exception('Error del servidor: ${response.statusCode}');
+  if (response.statusCode == 200) {
+    final List<dynamic> jsonData = json.decode(response.body);
+    
+    print('=' * 50);
+    print('🔍 DIAGNÓSTICO DETALLADO DE PRODUCTOS');
+    print('=' * 50);
+    
+    if (jsonData.isNotEmpty) {
+      // Revisar solo las primeras 3 ventas para no saturar
+      for (var i = 0; i < jsonData.length && i < 3; i++) {
+        final saleJson = jsonData[i];
+        print('\n📋 Venta #${saleJson['idSale']}:');
+        
+        if (saleJson.containsKey('details') && saleJson['details'] is List) {
+          final details = saleJson['details'] as List;
+          if (details.isNotEmpty) {
+            for (var j = 0; j < details.length && j < 3; j++) {
+              final detail = details[j];
+              print('   Producto ${j + 1}:');
+              
+              // Imprimir TODAS las claves disponibles
+              print('     Claves disponibles: ${detail.keys.toList()}');
+              
+              // Buscar específicamente el nombre
+              String? presentationName;
+              if (detail['presentationName'] != null) {
+                presentationName = detail['presentationName'].toString();
+              } else if (detail.containsKey('presentation') && detail['presentation'] != null) {
+                if (detail['presentation'] is Map && detail['presentation']['name'] != null) {
+                  presentationName = detail['presentation']['name'].toString();
+                }
+              }
+              
+              print('     Nombre encontrado: "${presentationName ?? 'NULO'}"');
+              print('     idPresentation: ${detail['idPresentation']}');
+            }
+          } else {
+            print('   ❌ No tiene detalles');
+          }
+        } else {
+          print('   ❌ No tiene campo "details" o no es lista');
+        }
+      }
     }
+    
+    print('=' * 50);
+    
+    // Parsear las ventas
+    final sales = jsonData.map((json) => Sale.fromJson(json)).toList();
+    
+    return sales;
+  } else if (response.statusCode == 403) {
+    throw Exception('Acceso denegado.');
+  } else {
+    print('❌ Error del servidor: ${response.statusCode}');
+    print('❌ Response body: ${response.body}');
+    throw Exception('Error del servidor: ${response.statusCode}');
   }
+}
+
+static Future<void> _diagnosePresentationNames() async {
+  try {
+    final response = await http.get(Uri.parse('$_baseUrl$_apiPath'), headers: _headers);
+    
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      if (jsonData is List && jsonData.isNotEmpty) {
+        print('\n🔍 DIAGNÓSTICO DE NOMBRES DE PRODUCTOS');
+        print('=' * 50);
+        
+        for (var i = 0; i < jsonData.length && i < 3; i++) {
+          final sale = jsonData[i];
+          print('\n📋 Venta #${sale['idSale']}');
+          
+          if (sale['details'] != null && sale['details'] is List) {
+            final details = sale['details'] as List;
+            for (var j = 0; j < details.length && j < 3; j++) {
+              final detail = details[j];
+              print('  Producto ${j + 1}:');
+              print('    - idPresentation: ${detail['idPresentation']}');
+              print('    - presentationName: "${detail['presentationName']}"');
+              print('    - ¿Tiene presentation?: ${detail.containsKey('presentation')}');
+              if (detail.containsKey('presentation') && detail['presentation'] != null) {
+                print('    - presentation.name: "${detail['presentation']['name']}"');
+              }
+            }
+          } else {
+            print('  ❌ No tiene detalles o details es null');
+          }
+        }
+      }
+    }
+  } catch (e) {
+    print('❌ Error en diagnóstico: $e');
+  }
+}
+
 }

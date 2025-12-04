@@ -1,3 +1,4 @@
+// lib/features/sales/widgets/sale_detail_modal.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:as241s4_t13_appmovil/core/models/sales/sale_model.dart';
@@ -20,8 +21,29 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
   // Usar los datos reales de la venta
   Sale get sale => widget.sale;
 
+  // MÉTODO HELPER PARA EXTRAER NOMBRE DEL CLIENTE EN VENTA
+  String _extractCustomerName(Sale sale) {
+    try {
+      // Prioridad 1: customerName de Sale
+      if (sale.customerName != null) {
+        final name = sale.customerName.toString().trim();
+        if (name.isNotEmpty && name != 'null') return name;
+      }
+      
+      // Último recurso: ID del cliente
+      final customerId = sale.idCustomer ?? '?';
+      return 'Cliente #$customerId';
+      
+    } catch (e) {
+      final customerId = sale.idCustomer?.toString() ?? '?';
+      return 'Cliente #$customerId';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final customerName = _extractCustomerName(sale);
+    
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -42,7 +64,7 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Información de la venta
+                  // Información de la venta con nombre REAL del cliente
                   _buildSaleInfo(),
                   const SizedBox(height: 20),
                   // Detalles del pago
@@ -105,33 +127,33 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
   }
 
   Widget _buildSaleInfo() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoItem(
-                  Icons.calendar_today_rounded,
-                  'Fecha',
-                  sale.formattedDate,
-                ),
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildInfoItem(
+                Icons.calendar_today_rounded,
+                'Fecha',
+                sale.formattedDate,
               ),
-              Expanded(
-                child: _buildInfoItem(
-                  Icons.person_rounded,
-                  'Cliente',
-                  sale.customerName,
-                ),
+            ),
+            Expanded(
+              child: _buildInfoItem(
+                Icons.person_rounded,
+                'Cliente',
+                sale.customerName ?? 'Cliente #${sale.idCustomer}', // ← NOMBRE REAL
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -329,7 +351,6 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
               ),
             ),
           ),
-          // Eliminado botón "Descargar Boleta"
           if (sale.isActive) ...[
             const SizedBox(width: 12),
             Expanded(
@@ -436,63 +457,79 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
   }
 
   Widget _buildItemRow(SaleDetail item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [primaryOrange, const Color(0xFFFF8C42)],
-              ),
-              borderRadius: BorderRadius.circular(6),
+  // Verificar si el nombre es genérico
+  final isGenericName = item.presentationName.startsWith('Producto #');
+  
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryOrange, const Color(0xFFFF8C42)],
             ),
-            child: Text(
-              '${item.amount}x',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '${item.amount}x',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              item.presentationName,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.presentationName,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isGenericName ? Colors.orange.shade700 : darkText,
+                  fontStyle: isGenericName ? FontStyle.italic : FontStyle.normal,
+                ),
+              ),
+              if (isGenericName)
+                Text(
+                  'ID de presentación: ${item.idPresentation}',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              'S/ ${item.unitPrice.toStringAsFixed(2)} c/u',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            Text(
+              'S/ ${item.subtotal.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: darkText,
               ),
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'S/ ${item.unitPrice.toStringAsFixed(2)} c/u',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              Text(
-                'S/ ${item.subtotal.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: darkText,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
+          ],
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildProofUpload() {
     return Column(
       children: [
@@ -586,7 +623,6 @@ class _SaleDetailModalState extends State<SaleDetailModal> {
     );
   }
 
-  // --- Método corregido para evitar error de setState ---
   Future<void> _processAnular() async {
     // Si la pantalla ya no está activa, no hacemos nada
     if (!mounted) return;
